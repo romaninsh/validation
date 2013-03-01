@@ -29,6 +29,15 @@ namespace romaninsh\validation;
  *     ->validate('*!')  // all fields are mandotory
  *     ;
  *
+ * same rules:
+ *
+ *     ->validate('email!',':down','a-z')
+ *     ->validate('email!|:down|a-z')
+ *     ->validate('email!:down:a-z')
+ *     ->validate('email:mandatory:down:a-z')
+ *     ;
+ *
+ *
  * Goals of the validator: 
  *  - make validation as simple and accessible as possible
  *  - allow flexibility on when validation occurs
@@ -62,6 +71,12 @@ class Controller_Validator extends \AbstractController {
     public $_conf;
     public $configure=null;
 
+    public $aliases=array(
+        'a-z'=>':alpha','a-z0-9'=>':alpha_num',
+        '?'=>':boolean',
+    );
+
+
     function init(){
         parent::init();
         // you can specify configuration thourgh add's
@@ -77,6 +92,13 @@ class Controller_Validator extends \AbstractController {
         }
         return $this;
     }
+
+    function parseRule($rule)
+    {
+        
+
+    }
+
     function parse($m,$config)
     {
         foreach ($config as $field => $rules) {
