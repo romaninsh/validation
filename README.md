@@ -17,11 +17,13 @@ of code. Validation should be easy to define and easy to update. Current
 libraries require the use of complex structures and require a lot of
 writing. With my library you can be clever about defining the rules:
 
+```
 ->validate([
     'name,surname|mandatory|len|5..100',
-    'postcode|=alpha|=trim|uk_zip?Not a UK postcode',
+    'postcode|to_alpha|to_trim|uk_zip?Not a UK postcode',
     'postcode2|as|postcode'
    ]);
+```
 
 The above code will make sure that name and surname are specified and that
 the length of name and surname is bitween 5 and 100 characters. Should
@@ -44,7 +46,7 @@ At the same time, each operator which you can use in a validator, is
 actually a method. If any section uses more than default set of characters,
 then additional checks are performed.
 
-validate('user_email|email');
+    validate('user_email|email');
 
 will execute `$v->v_email('john@doe.com', 'email', &$array)`
 
@@ -68,12 +70,14 @@ Syntax
 ### Most basic use
 By calling validate() method you can specify 3 types of arguments:
 
+```
 ->validate('field|rule|rule|rule');
-
 ->validate('field','rule','rule','rule');
+```
 
-This is identical to the rule above
+Both calls produce identical results. You can also use single-argument format by specifying array of rules:
 
+```
 ->validate(array(
    'field|rule|rule','field|rule|rule'
   )) 
@@ -82,14 +86,19 @@ or
     array('field','rule','rule'),
     array('filed','rule','rule')
   ));
-this format allows you combine multiple rules into a single call.
+```
+
 Calling ->validate() will only record the rules inside controllers and
 will not yet do anything. There are 2 ways how to actually start
 performing the validation:
 
+```
   ->now(); // will perform validation right away
 
-  ->on('hookName'); // will use owner's hook to validate. Validation
+  ->on('hookName'); // will use owner's hook to validate.
+``` 
+  
+Validation
 rules inside models use beforeSave by default. Calling this multiple
 time will replace previous value.
 
@@ -100,7 +109,7 @@ array elements. Method validate() will actually take any number of arguments,
 so you dont need to worry about syntax. It will process rules
 one-by-one. Some rules may consume additional argument, for example:
 
-->validate('name','in',$values);
+    ->validate('name','in',$values);
 
 Using "as" and "asif" will take all rules from another field and will
 apply them to a current field.
@@ -108,7 +117,9 @@ apply them to a current field.
 ### Field definition
 First argument always defines field. The validators method expandField
 is responsible for converting the notation into list of fields.
+
 Examples:
+
  - single field: "email"
  - multiple fields: "email,name,surname"
  - all fields: "*"
@@ -131,17 +142,17 @@ If field ends with exclamination sign, then 'mandatory' rule is invoked
 right after. Exclamination mark may also appear after rules, in which
 the 'mandatory' will be insterted after that particular Rules
 
-->validate('name|trim!')
+    ->validate('name|trim!')
 
 ### Aliases
 Rules can contain only lower_case characters and underscores because
 they are actually methods of a validator class, but some of those can be
 shortened using aliases. Here are some examples:
 
-a-z -> alpha
-a-z0-9 -> alpha_num
-0-9a-z -> alpha_num
-! -> mandatory
+ - a-z -> alpha
+ - a-z0-9 -> alpha_num
+ - 0-9a-z -> alpha_num
+ - ! -> mandatory
 
 ### Convertors
 Some rules will change the value of the field which will then be parsed
@@ -165,12 +176,12 @@ contain caption or name of the field. If you have used some convertors
 they may also alter that name and use "length of %s" there with the
 resulting message:
 
-"length of Name must be more than 20"
+    "length of Name must be more than 20"
 
 You can specify a custom error message if you append it through question
 mark to a rule:
 
->20?Must be over 20
+    >20?Must be over 20
 
 ### Custom Filters
 Sometimes you would like to specify a custom rule yourself. In this case
@@ -186,31 +197,36 @@ you can pass a callable to a validator.
 ### Special formats
 If after applying aliases rule still contains non-alpha characters, then
 few more things are checked:
- - /xx/ (starts with slash) changed to => 'regexp','/xx/'
- - a-c (containing dash) changed to => 'regexp','^[a-c]*$'
- - 3..9 (containing ..) changed into 'between',3,9
- - >5, <5, >=5, <=5, =5, !=5 are changed into gt, lt, ge, le, eq, ne
+
+ - /xx/ (starts with slash) changed to => `'regexp','/xx/'`
+ - a-c (containing dash) changed to => `'regexp','^[a-c]*$'`
+ - 3..9 (containing ..) changed into `'between',3,9`
+ - `>5, <5, >=5, <=5, =5, !=5` are changed into `gt, lt, ge, le, eq, ne`
 
 ### And and Or
 If you specify multiple rules for a same field, they are joined using
 "and" logic. In other words - they must all match. You can also use "or"
 logic:
 
+```
 ->validate(':or', rules1, rules2, rules3)
 ->validate(':and', rules1, rules2, rules3)
+```
 
 Example:
 
+```
 ->validate(
   ':or?Must be male over 10y or female over 12y',
   array(':and','gender|=M','age>10'),
   array(':and','gender|=F','age>12')
  )
+```
 
 ### Not
 This rule will reverse the outcome of the next validation. 
 
-->validate('gender|not|a-z')
+    ->validate('gender|not|a-z')
 
 Will produce error "Gender must not consist of latin characters". Error
 messages will have "must be" replaced with "must not" and sometimes may
@@ -221,7 +237,7 @@ By default 'if' rule consumes next argument and uses it as to see if
 the other field is specified. What if you would like to use a more
 sophisticated check? If supports sub-rules (just lake :or / :and)
 
-->validate('addr','if',array('method','=','deliver'))
+    ->validate('addr','if',array('method','=','deliver'))
 
 You can also use a call-back:
 
@@ -248,16 +264,20 @@ used as a rule, which will only apply when if is true. Third argument is
 When you use comparison operatiors either by their alias ('=')
 or by using the rule name 'eq', you specify the value:
 
+```
 ->validate('gender=M')
 ->validate('gender','=','M')
 ->validate('gender','eq','M')
+```
 
 if you want to compare with other field, then can use the colomn in the
 short syntax:
 
+```
 ->validate('pass1=:pass2')
 ->validate('pass1','=:','pass2')
 ->validate('pass1','eqf','pass2');
+```
 
 Same rule applies to other 5 comparison operators.
 
@@ -265,8 +285,10 @@ Same rule applies to other 5 comparison operators.
 using "in" and "!in" (or not_in) you can verify if element is inside set
 of allowed values:
 
+```
 ->validate('gender|in|M,F')
 ->validate('gender','in',array('M','F'))
+```
 
 The second format allows you to use any value inside array, they can
 even contain commas or pipes.
@@ -276,20 +298,24 @@ If you are willing to use some model-magic extensions, then you would need
 to use "Controller_Validator_ORM": There is a separate documentation on 
 it, but here I'll just give you some samples:
 
+```
 ->validate('email|unique')
 ->validate('email','in',$dsql) // specify a sub-query
 ->validate('user_id','loadable','User')  // valid record of another model
-
+```
 
 ### Field-specific validation
 When you call field->validate(), the field may extend your validadator
 of choice by injecting some additional rules. For instance image field
 will add additional rules:
 
+```
 ->validate('picture_id','larger','50x50')
 ->validate('picture_id','format','jpeg')
 ->validate('picture_id','size','<5000')
 ->validate('picture_id','size','kb','<5')
+```
+
 
 Here "larger" rule will require images to be 50x50 resolution at least.
 "format" is convertor which will substitute picture into format of file,
@@ -305,14 +331,15 @@ Sometimes you would like to perform operation between multiple fields,
 such as storing length of one filed inside another or splitting a field
 into two fields. This can be done by applying convertors carefully:
 
-
+```
 ->validate('name|copy|full_name|to_regexp|/.* /')
 ->validate('surname|copy|full_name|to_regexp|/ .*/')
 ->validate('name_length|copy|name|to_len')
-
+```
 
 ### Other Examples
 
+```
 ->validate([
  'email|to_email|!', # convert to email and must not be empty
  'base_price|to_int|10..100',  # convert to int, and bust me within range
@@ -320,6 +347,8 @@ into two fields. This can be done by applying convertors carefully:
  'pass1|=:pass2',
  'country_code|upper|in|UK,US,DE,FR', # uppercase for comparison only
  'addr2|asif|addr1', # validate addr2 like addr1 if addr1 is present
+```
+
 
 ### Changing hook
 
@@ -328,9 +357,11 @@ If used with form, the validation is performed during submit. It is possible
 to change the hook for a specific rule by using @hook. This is converted
 into "on" rule:
 
+```
 ->validate('name|to_lower|@afterLoad')
 ->validate('name|to_lower|on|afterLoad')
 ->validate('name','to_lower','on',array($api,'post-init'))
+```
 
 This will affect only a single rule and may result in creation of
 another copy of Controller_Validatior, so use ->on method of a validator
