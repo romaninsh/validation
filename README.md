@@ -3,118 +3,175 @@ Agile Validation Library
 
 This is a validation library for your Aglie Toolkit applications and more.
 
-Goals of Aglie Validation
+Goals of Agile Validation
 ----
 The reasons why I have created this library instead of re-using 3rd
 party is that there are very few validation rule-based libraries with a
 simple and consise syntax, which can be intuitively understood. 
 
-When creating this library, I also persuaded additional goals:
+Agile Toolkit carries on the design principles of the framework and is very
+similar in it's design to jQuery Chains or DQSL chaining. Here is a typical
+validation query:
+
+    $validator->is('name|len|<5?Name is too short');
+
+The library allows us to create number of rules, which are sequently checked
+in a consistent pattern. Here are some of my goals which I achieve with
+Agile Validation Library:
 
 ### 1. Minimalistic syntax
 Developers avoid validation, becasue it requires them to write a lot
 of code. Validation should be easy to define and easy to update. Current
 libraries require the use of complex structures and require a lot of
-writing. With my library you can be clever about defining the rules:
+writing. 
+
+Agile Toolkit already provides exception-based validation, where your
+model can perform any validations you can think of inside on of the beforeSave
+or afterLoad hooks. The mechanism of displaying errors, checking the fields
+is there, but this approach often requires developer to write many lines
+of code instead of short set of rules.
+
+With Agile Validation Library you can be clever about defining the rules:
 
 ```
-->validate([
-    'name,surname|mandatory|len|5..100',
-    'postcode|to_alpha|to_trim|uk_zip?Not a UK postcode',
-    'postcode2|as|postcode'
-   ]);
+$model->is([
+    'name,surname!|len|5..100',
+    'addr1_postcode|to_alpha|to_trim|uk_zip?Not a UK postcode',
+    'addr2_postcode|if|has_addr1|as|addr1_postcode'
+   ])->on('beforeSave');
 ```
 
-The above code will make sure that name and surname are specified and that
-the length of name and surname is bitween 5 and 100 characters. Should
-any rule not match, the error will be returned with appropriate syntax.
+It might seem that the above code is cryptic, but once you learn to read the
+rules, you will be loving using them in your application.
 
-Second line demonstrate normalization. Without equation sign (=) alpha
-and trim would produce errors but with equation they work as
-normalization methods. They will filter input and remove unnecessary
-spaces. Any command can be postfixed with ? and a custom error message.
+Let me quickly guide you through the example above.
 
-Final line shows how one rule can be inherited.
+ - the example features 3 rule-sets, each applied and checked individually.
+ - the rules are applied on the fields of a $model object
+ - rules are checked before model is saved
+ - first rule-set applies to 2 fields - name and surname
+ - first rule-set "!" will require both fields to be non-empty
+ - "len" convertor will apply any further rules on the length of the field
+ - 5..100 specifies allowed length of name and surname
+ - if name or surname is missing or their length is outside of specified range, appropriate error message will be shown.
+ - addr1_postcode field uses some "normalizers". Before record is saved into database, field will be filtered for alpha characters and trimmed down.
+ - after normalization addr1_postcode is checked against format of UK post code.
+ - "uk_zip" is using a custom error message, which will appear underneath a form's field.
+ - third rule is applied on addr2_postcode field (post code for 2nd address)
+ - rule is applied only if field "has_addr1" is true
+ - rule inherits all rules from the addr1_postcode field - therefore would be normalized too.
 
-### 2. Flexibility
-The validation is performed by validation controller, which initially
-initializes a basic set of rules. There are several classes which extend
-the base validation by adding additional rules to it. Some controllers
-may imply additional restrictions on what or when is being validated. 
 
-At the same time, each operator which you can use in a validator, is
-actually a method. If any section uses more than default set of characters,
-then additional checks are performed.
+### 2. Great Unique Concept
+The validation is implemented as an add-on, therefore you don't have to use it if you don't like the approach. The concept of a validation engine is based around few key concepts which you must understand before using.
 
-    validate('user_email|email');
-
-will execute `$v->v_email('john@doe.com', 'email', &$array)`
-
-by defining additional methods, new rules can emerge. You can also use
-controllers to register additional methods (registerMethod) inside
-validator.
+ - Field selector - specifying fields
+ - Rule processing - how rules are applied
+ - Rule types - filters, convertors and others
+ - Using rules to normalize field value
+ - Aliases and shorter syntax
+ - Logical operations
+ - Using closures/callbacks
+ - Adding your own rules
+ - Extending validator for special fields (e.g. upload image validation)
 
 ### 3. Integration
 Validator can work on it's own but is neatly integrated with the rest of
-Agile Toolkit. You still have controll over when the action is
+Agile Toolkit. You  have control over when the action is
 performed. By default validation occurs before saving model, but this
 can be changed.
 
-### 4. Exceptions
-Agile Toolkit already supports custom validation and can perfectly
-understand excetpions. Validator simply helps you provide additional rules.
+You can also use validator with a simple array (hash) or any other object which supports array-access, even objects from outside of Agile Toolkit.
 
-Syntax
+To specify where data is stored, you can use `with()` method.
+
+
+### 4. Error Messages
+Writing meaningful error-messages is a huge problem. That's why one of the goals of Agile Validator is to automatically generate reasonable error messages.
+
+
+Getting Started
 ----
+To create your first validation, use the following inside your model's init method:
 
-### Most basic use
-By calling validate() method you can specify 3 types of arguments:
+    $this->add('Validator')
+        ->is('age|numeric|>10')
+        ->is('email|email');
 
-```
-->validate('field|rule|rule|rule');
-->validate('field','rule','rule','rule');
-```
+Next create a CRUD with your model and try adding values:
 
-Both calls produce identical results. You can also use single-argument format by specifying array of rules:
+ - age as string
+ - age value 10 or less
+ - email in incorrect format
 
-```
-->validate(array(
-   'field|rule|rule','field|rule|rule'
-  )) 
+You should see a proper error message below the field.
+
+Understanding Rules Format
+----
+Ruleset is a set of rules and consists of 2 parts:
+ 
+ - field selector
+ - one or multiple rules
+ 
+In the most basic form, rule-sets look like this:
+
+    $validator->is('field|rule|rule|rule');
+
 or
-->validate(array(
+
+    $validator->is('field','rule','rule','rule');
+
+While using pipes sometimes is easier to read especially if you know how pipes work in UNIX, you can also specify unlimited number of arguments to the `is()` method and this approach is slightly more flexible (You can use | as part of the value).
+
+### 1. Rule Processing
+Validator stores all the rules you have defined, but does not apply them until certain call-back occurs. If you have added validator inside `Model` then default call-back is `beforeSave`. If you have added validator inside `Form` then rules are checked during `submit` event. 
+
+You can manually process the rules too by calling `now()` method or specify a different hook with `on()`.
+
+Until rules are processed you can add as many rules as you like. You can also group rules inside an array and feed them inside the validator:
+
+
+```
+$validator->is(array(
+   'field|rule|rule',
+   'field|rule|rule'
+  )) 
+```
+or if would like to avoid pipes:
+
+```
+$validator->is(array(
     array('field','rule','rule'),
     array('filed','rule','rule')
   ));
 ```
 
-Calling ->validate() will only record the rules inside controllers and
-will not yet do anything. There are 2 ways how to actually start
-performing the validation:
+### 2. Argument Consumption
+Some rules take arguments. For example `in` rule is used to check if the value exists in an array. The next argument after `in` is considered to be list of possible values instead of a rule:
 
-```
-  ->now(); // will perform validation right away
+    $validator->is('state','in','paid,draft,new,old');
 
-  ->on('hookName'); // will use owner's hook to validate.
-``` 
-  
-Validation
-rules inside models use beforeSave by default. Calling this multiple
-time will replace previous value.
+or
+
+    $validator->is('state','in',array('paid','draft','new','old'));
+
+You must check documentation of a specific rule if you want to know how many arguments it takes.
 
 
-### Rule processing
-As you saw rules can be defined by separating with pipe character or
-array elements. Method validate() will actually take any number of arguments,
-so you dont need to worry about syntax. It will process rules
-one-by-one. Some rules may consume additional argument, for example:
+### 3. Aliases 
+To make syntax shorter, a number of special rule formats is used. For instance:
 
-    ->validate('name','in',$values);
+    $validator->is('age','>18');
+    
+is the same as
 
-Using "as" and "asif" will take all rules from another field and will
-apply them to a current field.
+    $validator->is('age','gt',18);
 
-### Field definition
+You must remember that every short syntax have also a long-syntax inside 
+
+
+Field Definition
+----
 First argument always defines field. The validators method expandField
 is responsible for converting the notation into list of fields.
 
@@ -124,50 +181,168 @@ Examples:
  - multiple fields: "email,name,surname"
  - all fields: "*"
  - excluding fields: "*,-name,-surname"
+ 
+Validator will process this during the designated time (such as beforeSave). Use of asterisk assumes that your data source is either extended from Model, has method `getAllData()` or can be passed to `array_keys()`.
+ 
 
-You may also specify list of fields with array (except when you are
-using pipe character). Some validator extensions may define additional
-ways to define fields, for example when defining model's rules, you can
-also use field groups:
+### Specifying array of fields
+You may specify a list of fields using array. Next example will create one rule-set which will apply on 2 fields and require them to be specified.
+
+    $validator->is(array('name','email'),'!');
+    
+Next example is to remind you that `is()` may also take first argument as multi-array:
+
+    $validator->is(array('name!','email!'));
+
+
+Pleas remember that if you are defining fields through array, you may not use any other aliases inside this array.
+
+In this case two rules will be created, each on one field and they would require that field to be specified. Further on I will no longer point out different ways to specify rulesets except where it's important, so keep in mind all the possibilities.
+
+
+### Model field groups
+Models supports field groups:
 
 ```
+$model->addField('has_addr')->type('boolean');
 $model->addField('address')->group('addr');
 $model->addField('zip')->group('addr');
-$model->validate('[addr],!');
 ```
 
-### Exclamination mark
+You may now specify fields by group:
 
-If field ends with exclamination sign, then 'mandatory' rule is invoked
-right after. Exclamination mark may also appear after rules, in which
-the 'mandatory' will be insterted after that particular Rules
+```
+$validator->is('[addr]|if|has_addr')
+```
 
-    ->validate('name|trim!')
+### Exclamation sign
+NOTE: Validation rules are only there for validation. They will NOT affect presentation of the form. That's why you can still specify field types, display options and other flags inside field definition.
+
+Exclamation sign may appear at the end of field or any rule:
+
+    $validator->is('name!');
+    $validator->is('username|to_alpha!');
+
+The use of exclamation sign as shown above will convert into the following rules:
+
+    $validator->is('name|trim|required');
+    $validator->is('username|to_alpha|trim|required');
+
+Trim will remove trailing, ending and duplicate space. If you don't wish to trim the value, then you should use full-formatted 'required' rule:
+
+    $validator->is('name','required'); // will allow you to use "  " as name
+
+### Field comparison
+You may use equation sign inside field definition to compare two fields. Here is short example and resulting rule:
+
+    $validator->is('pass2=pass1');    // same as:
+    $validator->is('pass2','eqf','pass1');
+    
+### Question mark
+If you finish the field with a question mark, then it's considered to be a mandatory field with a user-defined error message:
+
+    $validator->is('name?type your name here');   // same as:
+    $validator->is('name|trim|required?type your name here');
+
+### Use with Model's Fields
+Agile Toolkit models can invoke your validator of choice if you:
+
+ 1. Define property $validator_class in your model. By default it's "Validator", but you may use your own class.
+ 2. Call ->validate() method on a field.
+ 
+ The following code:
+ 
+    $model->addField('age')->validate('int|>20?You must be over 20');
+
+is identical to this code:
+
+    $model->add($model->validator_class)->is('age|int|>20?You must be over 20');
+
+
+Rule Definition
+----
+As you learn more about validator, you must understand one important concept about how it works:
+
+ 1. When new rule is processed, the value is copied from the data-source into a temporary variable, which I'll call `accumulator`.
+ 2. Rules have access to `accumulator`, and name of the field
+ 3. Rules may "read" next argument and use it as an argument
+ 4. Rules may access other fields
+ 
+If rule looks at accumulator and then throws exception based on condition, then it's called a **Filter Rule**:
+
+```
+function rule_int($acc)
+{
+    if (!is_int($acc)) {
+        throw $this->exception('Must be int');
+    }
+}
+```
+
+Some of the filter rules are: int, regexp_match, email, alpha
+ 
+If rule looks at `accumulator` and returns non-null value, then this new value is stored inside `accumulator` for the next operation. Rule like that is called **Convertor Rule**:
+
+```
+function rule_len($acc)
+{
+    return strlen($acc);
+}
+```
+
+Some of convertor rules are: trim, len, date_diff
+
+### Normalization
+Often neglected by developer, normalization makes sure your user-input looks nice and clean. For example when users enter emails, they often leave spaces around it or when specifying number may accidentally paste some character, such as enter or tab along with the number.
+
+It's better that those values are cleaned up before they are saved. Any of the rules can be used with the "to_" prefix. This will cause validator to update the data source with the value of accumulator after role processing is complete. For example:
+
+    email|to_trim|to_email
+
+or
+
+    email|trim|to_email
+    
+If you add a trailing pipe to your validation rule, then this will copy `accumulator` back into the data source:
+
+    email|trim|email|
+    
+I highly encourage you to use normalization in your software. You must execute caution, as use of normalization can sometimes cause undesired results:
+
+    email|trim|len|>5|
+    
+This will replace email with it's length. Probably not what you wanted. The correct rule would be:
+
+    email|to_trim|len|>5
+
+
+### Multi-field operations, copy
+Sometimes you would like to perform operation between multiple fields,
+such as storing length of one filed inside another or splitting a field
+into two fields. This can be done by applying convertors carefully and using rule `copy`. This rule will copy value of `accumulator` from the field you specify.
+
+```
+->is('name|copy|full_name|trim|s/.* //|')
+->is('surname|copy|full_name|trim|s/ .*//|')
+->is('name_length|copy|name|len|')
+```
 
 ### Aliases
-Rules can contain only lower_case characters and underscores because
-they are actually methods of a validator class, but some of those can be
-shortened using aliases. Here are some examples:
+It's only safe to use alphanumeric characters, digits and underscores for rules and values when you use pipe-delimited rule format. Other characters are generally reserved for aliases. For rules that's OK, because rules are using PHP-method names anyway.
 
- - a-z -> alpha
- - a-z0-9 -> alpha_num
- - 0-9a-z -> alpha_num
- - ! -> mandatory
+When rule contains any other characters, it is considered to be an alias and validator will try to convert it into a regular rule. Rules below are listed in order in which they are verified:
 
-### Convertors
-Some rules will change the value of the field which will then be parsed
-to next rules. 
+ - `a-z` -> alpha
+ - `a-z0-9` -> alpha_num
+ - `0-9a-z` -> alpha_num
+ - `!` -> mandatory
+ - `2..4` -> between|2|4
+ - `>4` -> gt|4
+ - `!=5` -> ne|5
+ - `b-z` -> regexp_match|/^[b-z]*$/
+ - `/^a/` -> regexp_match|/^a/
+ - `s/a/z/` -> to_regexp|a|z
 
- - len - replace value of field by it's length
- - trim - replace value of field by trimming it
-
-### Filters
-Some rules can also act as a filters. Most of the rules are defined in
-such a way that they can also filter a usable part of the string for you.
-To use rule as a filter, it must be prepented with equation sign.
-
- - Calling "to_a-z" rule on "Hello World" will return "elloorld".
- - Calling "to_int" rule on "25.2" will produce 25.
 
 ### Error messages
 Each rule have an appropriate error message defined. For example rule
@@ -182,31 +357,91 @@ You can specify a custom error message if you append it through question
 mark to a rule:
 
     >20?Must be over 20
+    
+All error messages are passed through exceptions which also implies that error messages will be localized using `$this->api->_($error)`. Refer to localization documentation for further information.
 
-### Custom Filters
-Sometimes you would like to specify a custom rule yourself. In this case
-you can pass a callable to a validator. 
+If you are willing to specify some fancy error message with dangerous characters you can use the following format:
+
+    $validtor->is('age','int?','Must be numeric');
+
+When rule also expects an argument, then the argument for that rule must come first.
+
+    $validtor->is('age','!=?','10','Age must be 10');
+
+Inside error-message you can also use some of the parameters:
+
+ - {{name}} - actual name of the field (e.g. user_name)
+ - {{caption}} - caption of the field (if model), label of form or otherwise same as {{name}}
+ - {{arg1}} - first argument for a rule
+ - {{arg2}} - second argument for a rule
+ - {{arg3}} .. and so on.
+ 
+
+### Use of closures
+Previously I have explained how rule_X methods are called and how they are being passed an `accumulator`. If you specify a closure as a rule, then this closure is called. The first argument is a validator object, second argument is accumulator and third is name of the field. You can interface with validator to perform more complex operations. See below "Validator's Methods".
+
+Example:
 
 ```
-->validate('birthdate',function($v){
-  $d=new DateTime($v);
+->validate('birthdate',function($v,$acc){
+  $d=new DateTime($acc);
   return $d->diff(new DateTime($v))->format('%y')
  },'>=18?Must be at least 18 years old');
 ```
 
-### Special formats
-If after applying aliases rule still contains non-alpha characters, then
-few more things are checked:
 
- - /xx/ (starts with slash) changed to => `'regexp','/xx/'`
- - a-c (containing dash) changed to => `'regexp','^[a-c]*$'`
- - 3..9 (containing ..) changed into `'between',3,9`
- - `>5, <5, >=5, <=5, =5, !=5` are changed into `gt, lt, ge, le, eq, ne`
+### Comparison
+Naming of comparison rules are inspired by the UNIX bash comparison operations. `>5, <5, >=5, <=5, =5, !=5` are changed into `gt, lt, ge, le, eq, ne`. All of the methods will consume next argument and use it as a value to compare with. If the argument is array, then the contents of this array is considered to be a sub-rule.
+
+### Sub-rules
+Frankly - with what have been done so far, sub-rules is a intuitive next step. Sub-rules will pause the processing of your rule to go through another rule and then substitute it with resulting `accumulator`.
+
+    $validator->is(
+        'password1',
+        'len',
+        'eq?Password length must be the same',array('password2','len')
+    );
+    
+    
+You can also call sub-rules explicitly by using `as` rule. While normally the argument for `as` is name of the field, from which rules are collected, it can also read rules from an array argument.
+
+
+### Macros / Use of non-existent fields
+You can use rule system to create non-existent fields and then reference them:
+
+```
+$validator->is(array(
+    '#myemail|s/.*<//|s/>.*//|to_trim|email',
+    'client_email|as|#myemail',
+    'billing_email|as|#myemail'
+));
+```
+
+Let's take this to another level as we usually can with Agile Toolkit:
+
+```
+class MyValidator extends Validator
+{
+    function init()
+    {
+        parent::init();      
+        $this->is(array(
+            '#myemail|s/.*<//|s/>.*//|to_trim|email',
+            '#zip|s/.*<//|s/>.*//|to_trim|email',
+        ));
+}
+```
+
+Next you can specify this validator for your model and rely on those nonexistent fields which can now be used as a macro:
+
+    $validator->is('email|as|#myemail');
+
+If you specify error message to `as`, it will use it instead of the error message generated inside the sub-rule.
+
+    $validator->is('email|as?Does not match fancy email format|#myemail');
 
 ### And and Or
-If you specify multiple rules for a same field, they are joined using
-"and" logic. In other words - they must all match. You can also use "or"
-logic:
+You may rely on And / Or logic to define complex dependencies between multiple fields:
 
 ```
 ->validate(':or', rules1, rules2, rules3)
@@ -223,27 +458,21 @@ Example:
  )
 ```
 
-### Not
-This rule will reverse the outcome of the next validation. 
-
-    ->validate('gender|not|a-z')
-
-Will produce error "Gender must not consist of latin characters". Error
-messages will have "must be" replaced with "must not" and sometimes may
-not make sense, so consider using a custom error message.
+### Unit conversion
+There are few rules co convert your units into `kb`, `mb` or `gb`. Those convertors would divide `accumulator` by 1024 appropriate number of times.
 
 ### if (array)
-By default 'if' rule consumes next argument and uses it as to see if
+By default `if` rule consumes next argument and uses it as to see if
 the other field is specified. What if you would like to use a more
-sophisticated check? If supports sub-rules (just lake :or / :and)
+sophisticated check? If also supports sub-rules
 
-    ->validate('addr','if',array('method','=','deliver'))
+    ->validate('addr','if',array('order_delivery','=','deliver'))
 
-You can also use a call-back:
+You can also use a call-backs as an argument:
 
 ```
 ->validate('addr','if?Must specify address if you deliver',
- function($addr,$addr_name,$data){
+ function($v,$addr,$addr_name,$data){
   return $data['method']=='deliver';
 })
 ```
@@ -259,27 +488,25 @@ used as a rule, which will only apply when if is true. Third argument is
 ->validate('delivery_to','if','home','[home_addr]!','[work_addr]!')
 ```
 
+The only way how you can omit arguments is by leaving `if` as a last rule. Having `if` in your rule-set will not bypass any rules prior to it.
+
 
 ### Comparing fields
 When you use comparison operatiors either by their alias ('=')
 or by using the rule name 'eq', you specify the value:
 
 ```
-->validate('gender=M')
+->validate('gender','=M')
 ->validate('gender','=','M')
 ->validate('gender','eq','M')
 ```
 
-if you want to compare with other field, then can use the colomn in the
-short syntax:
+If you want to compare with other field you can either specify it inside the field or use one of the methods with "f" at the end: `eqf, nef, ltf, gtf, lef, get`:
 
 ```
-->validate('pass1=:pass2')
-->validate('pass1','=:','pass2')
+->validate('pass1=pass2')
 ->validate('pass1','eqf','pass2');
 ```
-
-Same rule applies to other 5 comparison operators.
 
 ### Member of array
 using "in" and "!in" (or not_in) you can verify if element is inside set
@@ -293,60 +520,74 @@ of allowed values:
 The second format allows you to use any value inside array, they can
 even contain commas or pipes.
 
-### Database-queries
-If you are willing to use some model-magic extensions, then you would need
-to use "Controller_Validator_ORM": There is a separate documentation on 
-it, but here I'll just give you some samples:
+Extension - Validator_Table
+----
+Agile Toolkit implements validator through a number of classes:
+
+ * AbstractValidator - implements only rule logic, but no actual fields. Conditions, comparisons and sub-rule logic is implemented. Will also support `Model` data source.
+ * Validator - adds rules which are commonly used for validation.
+ * Validator_Table - assumes that you use `Model_Table` and introduce number of ORM-based extensions.
+
+`Validator` rules have been explained above, however `Validator_Table` offers the following enhancements:
+
+### Avoiding duplicates (unique)
+In some cases you would like to avoid to have multiple user accounts with same email. Rule 'unique' will attempt to find another record with same email and if it is found, will produce error. 
+
+    $validator->is('email|unique');
+
+### Looking up inside DSQL
+Using $dsql, you may specify a sub-query which can be used for lookup of valid elements:
+
+    $validator->is('email','in',$dsql);
+  
+Validator will perform a query such as: "select 1 if [field] in ($dsql)" (with proper quotes). 
+
+### Verify other model
+You may create a rule, which attempts to load a record from a separate model:
+
+    $validator->is('user_id','loadable','User');
+
+You may also avoid the model:
+
+    $validator->is('user_id','loadable');
+
+if you define the field through `hasOne`. With model integration this rule can be as simple as:
+
+
+    $this->hasOne('User')->validate('loadable');
+
+
+Extension - Validator_Image
+----
+When you use Filestore add-on, it also introduces additional validator class, which can be used to perform further checks on image field. Here is a syntax:
+
+    $model->add('filestore/Field_Image')->validate('format|=jpeg')->validate('size|mb|<5');
+
+You can call validate() method several times or specify array with rules.
+
+ * format - returns format of uploaded image
+ * size - returns size of uploaded file
+ * height - returns height
+ * width - returns width
+
+Validation defined on the image field by default will be using an upload hook, so that error will be displayed not during form submission, but when you are still uploading the image.
+
+
+More Examples
+----
 
 ```
-->validate('email|unique')
-->validate('email','in',$dsql) // specify a sub-query
-->validate('user_id','loadable','User')  // valid record of another model
-```
-
-### Field-specific validation
-When you call field->validate(), the field may extend your validadator
-of choice by injecting some additional rules. For instance image field
-will add additional rules:
-
-```
-->validate('picture_id','larger','50x50')
-->validate('picture_id','format','jpeg')
-->validate('picture_id','size','<5000')
-->validate('picture_id','size','kb','<5')
-```
-
-
-Here "larger" rule will require images to be 50x50 resolution at least.
-"format" is convertor which will substitute picture into format of file,
-"size", "height", "width" all are also convertors.
-
-### Units
-Use of convertors allows us to easily operate with units. For example,
-"kb" and "mb" are also convertors which divide current value by
-1024 or 1024*1024. This is handy when used with "size" for file size.
-
-### Multi-field operations, copy
-Sometimes you would like to perform operation between multiple fields,
-such as storing length of one filed inside another or splitting a field
-into two fields. This can be done by applying convertors carefully:
-
-```
-->validate('name|copy|full_name|to_regexp|/.* /')
-->validate('surname|copy|full_name|to_regexp|/ .*/')
-->validate('name_length|copy|name|to_len')
-```
-
-### Other Examples
-
-```
-->validate([
- 'email|to_email|!', # convert to email and must not be empty
+$validator->is(array(
+ 'email|to_email|!',           # convert to email and must not be empty
  'base_price|to_int|10..100',  # convert to int, and bust me within range
- 'postcode|to_upper|to_trim|to_A-Z|postcode', # clean up postcode then validate
+ 'postcode|to_upper|to_trim|to_A-Z|postcode',
+                               # clean up postcode then validate
  'pass1|=:pass2',
- 'country_code|upper|in|UK,US,DE,FR', # uppercase for comparison only
- 'addr2|asif|addr1', # validate addr2 like addr1 if addr1 is present
+ 'country_code|upper|in|UK,US,DE,FR',
+                               # uppercase for comparison only
+ 'addr2|asif|addr1',           # validate addr2 like addr1 if addr1 is present
+ 'hobby|s/[^,]//|len|>5?Max of 5 hobbies can be specified'
+));
 ```
 
 
