@@ -194,11 +194,7 @@ Next example is to remind you that `is()` may also take first argument as multi-
 
     $validator->is(array('name!','email!'));
 
-
-Pleas remember that if you are defining fields through array, you may not use any other aliases inside this array.
-
 In this case two rules will be created, each on one field and they would require that field to be specified. Further on I will no longer point out different ways to specify rulesets except where it's important, so keep in mind all the possibilities.
-
 
 ### Model field groups
 Models supports field groups:
@@ -346,12 +342,11 @@ When rule contains any other characters, it is considered to be an alias and val
 
 ### Error messages
 Each rule have an appropriate error message defined. For example rule
-">20" produces message "%s must me more than %n". By default %s will
-contain caption or name of the field. If you have used some convertors
-they may also alter that name and use "length of %s" there with the
-resulting message:
+">20" produces message "{{caption}} must me more than {{arg1}}". 
 
-    "length of Name must be more than 20"
+If you have used some convertors they may also alter error message: "length of {{caption}}" 
+
+    "Length of Name must be more than 20"
 
 You can specify a custom error message if you append it through question
 mark to a rule:
@@ -607,3 +602,18 @@ into "on" rule:
 This will affect only a single rule and may result in creation of
 another copy of Controller_Validatior, so use ->on method of a validator
 instead of using this for every single rule.
+
+Further Ideas
+----
+Validator can normalize rule definitions as often explained above. Although this will not support all of the cases, normalization can be pretty awesome if you are willing to do client-based validation (in browser or mobile app)
+
+    $validator->getRules('field');
+
+This will return array of rule-sets like this:
+
+    array(
+        array('rule','rule','rule',$arg,'rule'), 
+        array('rule','rule','rule')
+    );
+
+Each rule name would be expressed using alpha-numeric and underscore. Argument can be value or array of values.
