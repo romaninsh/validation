@@ -24,7 +24,7 @@ class Controller_Validator extends Controller_AbstractValidator {
 
     function rule_ne($a){
         $b=$this->getRule();
-        if($a!=$b)return $this->fail('must not be {{arg1}}',$a);
+        if($a==$b)return $this->fail('must not be {{arg1}}',$a);
     }
 
 }
