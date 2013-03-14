@@ -2,7 +2,7 @@
 namespace romaninsh\validation;
 
 class Controller_AbstractValidator extends \AbstractController {
-    public $rules;
+    public $rules=array();
 
 
     // {{{ Interface Methods
@@ -12,21 +12,46 @@ class Controller_AbstractValidator extends \AbstractController {
 
         // If only first argument is specified, then it's array of rules.
         if(count($args)==1 && is_array($args[0])){
-            foreach($args[0] as $rules){
+            $args=$args[0];
+        }
+        foreach($args as $rules){
 
-                // Converts rule-set into presentable format, and clean up
-                // field definition from !, = etc.
-                list($field_definition,$rules) = $this->expandRules($rules);
+            // Converts rule-set into presentable format, and clean up
+            // field definition from !, = etc.
+            list($field_definition,$rules) = $this->expandRules($rules);
 
-                // Convert field defintion into list of fields
-                $fields=$this->expandFieldDefinition($field_definition);
+            // Convert field defintion into list of fields
+            $fields=$this->expandFieldDefinition($field_definition);
 
-                // Save rules for each field
-                foreach($fields as $field){
-                    $this->rules[$field][]=$rules;
-                }
+            // Save rules for each field
+            foreach($fields as $field){
+                $this->rules[$field][]=$rules;
             }
         }
+        return $this;
+    }
+
+    /**
+     * In: "int|required|alphanum|save"
+     * In: "int!|a-z|"
+     * Out: array('int','required','alphanum','save')
+     */
+    function expandRules($rules)
+    {
+        list($field,$rules)=explode('|',$rules,2);
+        $rules=preg_split('/[|,:]/',$rules);
+        return array($field,$rules);
+    }
+
+    /**
+     * In: "name,surname,foo"
+     * In: "%boolean,-@address" // boolean type except address group
+     * Out: array('name','surname','foo')
+     *
+     */
+    function expandFieldDefinition($field_definition)
+    {
+        return explode(',',$field_definition);
     }
 
     /**
@@ -44,6 +69,13 @@ class Controller_AbstractValidator extends \AbstractController {
         $object->addHook($hook,array($this,'applyRules'));
     }
 
+    function now(){
+        return $this->applyRulesets();
+    }
+
+    function getActualFields(){
+        return array_keys($this->rules);
+    }
 
     function applyRulesets(){
         // Get of fields which actually need validation at this time.
@@ -56,6 +88,7 @@ class Controller_AbstractValidator extends \AbstractController {
                 $this->applyRules($field,$rules);
             }
         }
+        return $this;
     }
 
     /**
@@ -102,9 +135,9 @@ class Controller_AbstractValidator extends \AbstractController {
     /**
      * Will process individual rule 
      */
-    function processRuleset($)
+    function processRuleset()
     {
-        foreach(
+        //foreach(
     }
 
     function singleRule()
