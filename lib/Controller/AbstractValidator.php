@@ -4,6 +4,17 @@ namespace romaninsh\validation;
 class Controller_AbstractValidator extends \AbstractController {
     public $rules=array();
 
+    public $default_exception='Exception_ValidityCheck';
+
+    public $alias=array();  // legacy=>new
+
+    function init()
+    {
+        parent::init();
+
+        $this->source=$this->owner; // must support set/get interface
+    }
+
 
     // {{{ Interface Methods
     function is()
@@ -95,10 +106,15 @@ class Controller_AbstractValidator extends \AbstractController {
      * Gets next rule from the current ruleset
      */
     function getRule(){
-        return array_unshift($this->current_ruleset);
+        return $this->consumed[]=array_shift($this->current_ruleset);
+    }
+
+    function get($field){
+        return $this->source->get($field);
     }
 
     public $acc=null;
+    public $consumed=array();
     function applyRules($field,$rules){
         $this->acc=$this->get($field);
         $this->current_ruleset=$rules;
@@ -106,28 +122,52 @@ class Controller_AbstractValidator extends \AbstractController {
         while(!is_null($rule=$this->getRule())){
             $this->cast=false;
 
-            if( (is_object($rule) || is_array($rule)) && is_callable($rule)){
-                $tmp = $rule($this,$this->acc,$field);
-            }else{
-                // to_XX 
-                if(substr($rule,0,2)=='to_'){
-                    $rule=substr($rule,3);
-                    $this->cast=true;
-                }
-                if($rule===''){
-                    if($this->cast)$this->set($field,$this->acc);
-                    continue;
-                }
-                $tmp = $this->{'rule_'.$rule}($this->acc,$field);
-            }
+            // For debugging
+            $tmp=null;
+            $this->consumed=array($rule);
 
-            if($this->debug()){
-                echo "<font color=blue>rule_$rule({$this->acc},$field)=$tmp</font><br/>";
-            }
+            try{
+                if( (is_object($rule) || is_array($rule)) && is_callable($rule)){
+                    $tmp = $rule($this,$this->acc,$field);
+                }else{
+                    // to_XX 
+                    if(substr($rule,0,2)=='to_'){
+                        $rule=substr($rule,3);
+                        $this->cast=true;
+                    }
+                    if($rule===''){
+                        if($this->cast)$this->set($field,$this->acc);
+                        continue;
+                    }
+                    if(isset($this->alias[$rule])){
+                        $rule=$this->alias[$rule];
+                    }
+                    $tmp = $this->{'rule_'.$rule}($this->acc,$field);
+                }
 
-            if(!is_null($tmp))$this->acc=$tmp;
-            if($this->cast)$this->set($field,$tmp);
+                if($this->debug()){
+                    echo "<font color=blue>rule_$rule({$this->acc},".
+                        join(',',$this->consumed).")=$tmp</font><br/>";
+                }
+
+                if(!is_null($tmp))$this->acc=$tmp;
+                if($this->cast)$this->set($field,$tmp);
+            } catch (\Exception_ValidityCheck $e) {
+                if($this->debug()){
+                    echo "<font color=red>rule_$rule({$this->acc},".
+                        join(',',$this->consumed).") failed</font><br/>";
+                }
+                throw $e
+                    ->setField($field)
+                    ->addMoreInfo('val',$this->acc)
+                    ->addMoreInfo('rule',$rule);
+            }
         }
+    }
+
+    function fail($str)
+    {
+        throw $this->exception($str);
     }
 
     // }}}
@@ -143,5 +183,13 @@ class Controller_AbstractValidator extends \AbstractController {
     function singleRule()
     {
     }
+
+    function rule_fail(){
+        return $this->fail('is incorrect');
+    }
+
+
+    // TO BE MOVED to validator
+    //
 
 }

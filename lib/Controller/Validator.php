@@ -3,6 +3,33 @@ namespace romaninsh\validation;
 
 class Controller_Validator extends Controller_AbstractValidator {
 
+    function init(){
+        parent::init();
+
+        $this->alias=array_merge($this->alias,
+            array(
+                'same'=>'eq',
+                'different'=>'ne',
+            )
+        );
+    }
+
+
+    function rule_int($acc)
+    {
+
+        if(!filter_var($acc, FILTER_VALIDATE_INT)){
+            return $this->fail('must be integer');
+        }
+        return (int)$acc;
+    }
+
+
+
+
+
+
+
     /**
      * Validator which 
      */
@@ -19,12 +46,14 @@ class Controller_Validator extends Controller_AbstractValidator {
 
     function rule_eq($a){
         $b=$this->getRule();
-        if($a!=$b)return $this->fail('must be equal to {{arg1}}',$a);
+        if($a!=$this->get($b))return $this->fail('must be equal to {{arg1}}',$a);
     }
 
     function rule_ne($a){
         $b=$this->getRule();
-        if($a==$b)return $this->fail('must not be {{arg1}}',$a);
+        if($a==$this->get($b))return $this->fail('must not be {{arg1}}',$a);
     }
+
+
 
 }
