@@ -8,6 +8,8 @@ class Controller_Validator_Abstract extends \AbstractController {
 
     public $alias=array();  // legacy=>new
 
+    public $source=null;
+
     function init()
     {
         parent::init();
@@ -61,6 +63,15 @@ class Controller_Validator_Abstract extends \AbstractController {
             $this->rules[$field][]=$rules;
         }
         return $this;
+    }
+
+    /**
+     * If you are adding this controller inside a model, you don't need to
+     * set source. If you want controller to work with an array or some other
+     * object, use setSource()
+     */
+    function setSource($source) {
+        $this->source=$source;
     }
 
     /**
@@ -192,6 +203,13 @@ class Controller_Validator_Abstract extends \AbstractController {
         return $this;
     }
 
+    function resolveRuleAlias($rule){
+        if(isset($this->alias[$rule])){
+            $rule=$this->alias[$rule];
+        }
+        return $rule;
+    }
+
     public $acc=null;
     public $consumed=array();
     public $current_ruleset=null;
@@ -228,9 +246,8 @@ class Controller_Validator_Abstract extends \AbstractController {
                         if($this->cast)$this->set($field,$this->acc);
                         continue;
                     }
-                    if(isset($this->alias[$rule])){
-                        $rule=$this->alias[$rule];
-                    }
+
+                    $rule=$this->resolveRuleAlias($rule);
                     $tmp = $this->{'rule_'.$rule}($this->acc,$field);
                 }
 
