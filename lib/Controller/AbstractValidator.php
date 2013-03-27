@@ -145,7 +145,7 @@ class Controller_AbstractValidator extends \AbstractController {
                     $tmp = $this->{'rule_'.$rule}($this->acc,$field);
                 }
 
-                if($this->debug()){
+                if($this->debug){
                     echo "<font color=blue>rule_$rule({$this->acc},".
                         join(',',$this->consumed).")=$tmp</font><br/>";
                 }
@@ -153,7 +153,7 @@ class Controller_AbstractValidator extends \AbstractController {
                 if(!is_null($tmp))$this->acc=$tmp;
                 if($this->cast)$this->set($field,$tmp);
             } catch (\Exception_ValidityCheck $e) {
-                if($this->debug()){
+                if($this->debug){
                     echo "<font color=red>rule_$rule({$this->acc},".
                         join(',',$this->consumed).") failed</font><br/>";
                 }
