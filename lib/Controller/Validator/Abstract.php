@@ -1,7 +1,7 @@
 <?php
 namespace romaninsh\validation;
 
-class Controller_AbstractValidator extends \AbstractController {
+class Controller_Validator_Abstract extends \AbstractController {
     public $rules=array();
 
     public $default_exception='Exception_ValidityCheck';
@@ -21,6 +21,7 @@ class Controller_AbstractValidator extends \AbstractController {
     {
         $args=func_get_args();
 
+        var_dump(count($args));
         // If only first argument is specified, then it's array of rules.
         if(count($args)==1 && is_array($args[0])){
             $args=$args[0];

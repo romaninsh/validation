@@ -1,7 +1,7 @@
 <?php
 namespace romaninsh\validation;
 
-class Controller_Validator extends Controller_AbstractValidator {
+class Controller_Validator_Basic extends Controller_Validator_Abstract {
 
     function init(){
         parent::init();
