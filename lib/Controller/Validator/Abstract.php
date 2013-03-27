@@ -1,4 +1,4 @@
-<?php
+<?php // vim:ts=4:sw=4:et:fdm=marker
 namespace romaninsh\validation;
 
 class Controller_Validator_Abstract extends \AbstractController {
@@ -16,7 +16,7 @@ class Controller_Validator_Abstract extends \AbstractController {
     }
 
 
-    // {{{ Interface Methods
+    // {{{ Rule initialization and normalization methods
     /**
      * This method will go through all the rules you specify, expand
      * and normalize them and assign into array indexed by field name.
@@ -64,7 +64,8 @@ class Controller_Validator_Abstract extends \AbstractController {
     }
 
     /**
-     * Provided with 
+     * Provided with string containing rules, this will convert it into
+     * normal (array) form
      *
      * In: "int|required|alphanum|save"  (Basic)
      * In: "int!|a-z|"                   (Advanced)
@@ -78,24 +79,32 @@ class Controller_Validator_Abstract extends \AbstractController {
     }
 
     /**
-     * In: "name,surname,foo"
-     * In: "%boolean,-@address" // boolean type except address group
-     * Out: array('name','surname','foo')
+     * Provided with a multiple field definition, this will convert
+     * them into an array.
      *
+     * In: "name,surname,foo"        (Basic)
+     * In: "%boolean,-@address"      (Advanced)
+     * Out: array('name','surname','foo')
      */
     function expandFieldDefinition($field_definition)
     {
         return explode(',',$field_definition);
     }
 
+    // }}}
+
+    // {{{ Supplimentary configuration methods
     /**
-     * Get parsed rules
+     * Call this to get list of parsed rules for specified field.
      */
     function getRules($field){
         return $this->rules[$field];
     }
 
-
+    /**
+     * Call this to set a different hook when rules are going to be
+     * applied. By default you have to call now()
+     */
     function on($hook,$object=null)
     {
         if(!$object)$object=$this->owner;
@@ -103,16 +112,37 @@ class Controller_Validator_Abstract extends \AbstractController {
         $object->addHook($hook,array($this,'applyRules'));
     }
 
+    /**
+     * Apply rules now.
+     */
     function now(){
         return $this->applyRulesets();
     }
 
+    // }}}
+
+    // {{{ Internal Methods to be used by rule_*
+
+
+    // }}}
+
+    // {{{ Methods which are essential when applying rules
+    /**
+     * Get list of fields which we are going to validate. In some cases
+     * it makes no sense to validate fields which are not appearing individual
+     * the form, therefore this method will look carefully at what you are
+     * validating 
+     */
     function getActualFields(){
         return array_keys($this->rules);
     }
 
+    /** 
+     * Go through the list of defined rules and call the corresponding
+     * filters and convertors.
+     */
     function applyRulesets(){
-        // Get of fields which actually need validation at this time.
+        // List of fields which actually need validation at this time.
         $fields=$this->getActualFields();
 
         foreach($fields as $field){
