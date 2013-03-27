@@ -17,35 +17,57 @@ class Controller_Validator_Abstract extends \AbstractController {
 
 
     // {{{ Interface Methods
+    /**
+     * This method will go through all the rules you specify, expand
+     * and normalize them and assign into array indexed by field name.
+     *
+     * You do not need to have your fields defined at this point, unless
+     * you specify wildcards.
+     *
+     * This method takes various arguments as described in documentation.
+     */
     function is()
     {
         $args=func_get_args();
 
-        var_dump(count($args));
-        // If only first argument is specified, then it's array of rules.
-        if(count($args)==1 && is_array($args[0])){
-            $args=$args[0];
-        }
-        foreach($args as $rules){
-
-            // Converts rule-set into presentable format, and clean up
-            // field definition from !, = etc.
-            list($field_definition,$rules) = $this->expandRules($rules);
-
-            // Convert field defintion into list of fields
-            $fields=$this->expandFieldDefinition($field_definition);
-
-            // Save rules for each field
-            foreach($fields as $field){
-                $this->rules[$field][]=$rules;
+        // If only first argument is specified, then it's array of rulesets.
+        // We will call ourselves with every element.
+        if (count($args)==1 && is_array($args[0])) {
+            foreach ($args[0] as $ruleset) {
+                // $ruleset here is either array or string with pipes
+                if (!is_array($ruleset)) {
+                    $ruleset=array($ruleset);
+                }
+                call_user_func_array(array($this,'is'), $ruleset);
             }
+            return $this;
+        }
+
+
+        // If ruleset is specified as a string, we need to expand it
+        // into an array.
+        if (count($args)==1) {
+            list($field_definition,$rules) = $this->expandRules($args[0]);
+        } else {
+            $rules=$args;
+            $field_definition=array_shift($rules);
+        }
+
+        // Convert field defintion into list of fields
+        $fields=$this->expandFieldDefinition($field_definition);
+
+        // Save rules for each field
+        foreach ($fields as $field) {
+            $this->rules[$field][]=$rules;
         }
         return $this;
     }
 
     /**
-     * In: "int|required|alphanum|save"
-     * In: "int!|a-z|"
+     * Provided with 
+     *
+     * In: "int|required|alphanum|save"  (Basic)
+     * In: "int!|a-z|"                   (Advanced)
      * Out: array('int','required','alphanum','save')
      */
     function expandRules($rules)
