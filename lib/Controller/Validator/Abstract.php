@@ -47,7 +47,7 @@ class Controller_Validator_Abstract extends \AbstractController {
         // If ruleset is specified as a string, we need to expand it
         // into an array.
         if (count($args)==1) {
-            list($field_definition,$rules) = $this->expandRules($args[0]);
+            list($field_definition,$rules) = $this->normalizeRules($args[0]);
         } else {
             $rules=$args;
             $field_definition=array_shift($rules);
@@ -71,7 +71,7 @@ class Controller_Validator_Abstract extends \AbstractController {
      * In: "int!|a-z|"                   (Advanced)
      * Out: array('int','required','alphanum','save')
      */
-    function expandRules($rules)
+    function normalizeRules($rules)
     {
         list($field,$rules)=explode('|',$rules,2);
         $rules=preg_split('/[|,:]/',$rules);
@@ -156,23 +156,59 @@ class Controller_Validator_Abstract extends \AbstractController {
     }
 
     /**
-     * Gets next rule from the current ruleset
+     * Pulls next rule out of the rule stack (current_ruleset)
      */
-    function getRule(){
+    function pullRule(){
         return $this->consumed[]=array_shift($this->current_ruleset);
     }
+    /**
+     * Adds new rule into a rule-set, which will be executed next.
+     * You can specify single or multiple rules, this method accepts
+     * variable arguments.
+     *
+     * Rules must be normalized.
+     */
+    function pushRule(){
+        $args=func_get_args();
 
+        // TODO: this can probably be done by args+current_ruleset
+        foreach (array_reverse($args) as $arg) {
+            array_unshift($this->current_ruleset, $arg);
+        }
+    }
+
+    /**
+     * Returns the original value of the field.
+     */
     function get($field){
-        return $this->source->get($field);
+        return $this->source[$field];
+    }
+
+    /**
+     * Changes the original value of the field (for normalization)
+     */
+    function set($field,$value){
+        $this->source[$field]=$value;
+        return $this;
     }
 
     public $acc=null;
     public $consumed=array();
-    function applyRules($field,$rules){
-        $this->acc=$this->get($field);
-        $this->current_ruleset=$rules;
+    public $current_ruleset=null;
 
-        while(!is_null($rule=$this->getRule())){
+    /**
+     * This is the main body for rule processing.
+     */
+    function applyRules($field,$ruleset){
+
+        // Save previous values, just in case
+        $acc=$this->acc;
+        $crs=$this->current_ruleset;
+
+        $this->acc=$this->get($field);
+        $this->current_ruleset=$ruleset;
+
+        while(!is_null($rule=$this->pullRule())){
             $this->cast=false;
 
             // For debugging
@@ -210,12 +246,16 @@ class Controller_Validator_Abstract extends \AbstractController {
                     echo "<font color=red>rule_$rule({$this->acc},".
                         join(',',$this->consumed).") failed</font><br/>";
                 }
+                $this->acc=$acc;
+                $this->current_ruleset=$crs;
                 throw $e
                     ->setField($field)
                     ->addMoreInfo('val',$this->acc)
                     ->addMoreInfo('rule',$rule);
             }
         }
+        $this->acc=$acc;
+        $this->current_ruleset=$crs;
     }
 
     function fail($str)
