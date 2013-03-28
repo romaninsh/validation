@@ -56,7 +56,7 @@ class Controller_Validator_Abstract extends \AbstractController {
         }
 
         // Convert field defintion into list of fields
-        $fields=$this->expandFieldDefinition($field_definition);
+        $fields=$this->expandFieldDefinition($field_definition,$rules);
 
         // Save rules for each field
         foreach ($fields as $field) {
@@ -97,7 +97,7 @@ class Controller_Validator_Abstract extends \AbstractController {
      * In: "%boolean,-@address"      (Advanced)
      * Out: array('name','surname','foo')
      */
-    function expandFieldDefinition($field_definition)
+    function expandFieldDefinition($field_definition,&$normalized_rules)
     {
         return explode(',',$field_definition);
     }
@@ -207,12 +207,19 @@ class Controller_Validator_Abstract extends \AbstractController {
         if(isset($this->alias[$rule])){
             $rule=$this->alias[$rule];
         }
+
+        if(strpos($rule,'?')!==false){
+            list($rule,$this->custom_error)=explode('?',$rule,2);
+        }
+
         return $rule;
     }
 
     public $acc=null;
     public $consumed=array();
     public $current_ruleset=null;
+    public $custom_error=null;
+    public $bail_out=false;
 
     /**
      * This is the main body for rule processing.
@@ -222,12 +229,14 @@ class Controller_Validator_Abstract extends \AbstractController {
         // Save previous values, just in case
         $acc=$this->acc;
         $crs=$this->current_ruleset;
+        $this->bail_out=false;
 
         $this->acc=$this->get($field);
         $this->current_ruleset=$ruleset;
 
         while(!is_null($rule=$this->pullRule())){
             $this->cast=false;
+            $this->custom_error=null;
 
             // For debugging
             $tmp=null;
@@ -238,8 +247,10 @@ class Controller_Validator_Abstract extends \AbstractController {
                     $tmp = $rule($this,$this->acc,$field);
                 }else{
                     // to_XX 
-                    if(substr($rule,0,2)=='to_'){
-                        $rule=substr($rule,3);
+                    if(substr($rule,0,3)=='to_'){
+                        if(!$this->hasMethod('rule_'.$rule)) {
+                            $rule=substr($rule,3);
+                        }
                         $this->cast=true;
                     }
                     if($rule===''){
@@ -258,6 +269,7 @@ class Controller_Validator_Abstract extends \AbstractController {
 
                 if(!is_null($tmp))$this->acc=$tmp;
                 if($this->cast)$this->set($field,$tmp);
+                if($this->bail_out)break;
             } catch (\Exception_ValidityCheck $e) {
                 if($this->debug){
                     echo "<font color=red>rule_$rule({$this->acc},".
@@ -277,7 +289,11 @@ class Controller_Validator_Abstract extends \AbstractController {
 
     function fail($str)
     {
-        throw $this->exception($str);
+        throw $this->exception($this->custom_error?:$str);
+    }
+    function stop()
+    {
+        $this->bail_out=true;
     }
 
     // }}}
@@ -285,15 +301,6 @@ class Controller_Validator_Abstract extends \AbstractController {
     /**
      * Will process individual rule 
      */
-    function processRuleset()
-    {
-        //foreach(
-    }
-
-    function singleRule()
-    {
-    }
-
     function rule_fail(){
         return $this->fail('is incorrect');
     }
@@ -301,5 +308,13 @@ class Controller_Validator_Abstract extends \AbstractController {
 
     // TO BE MOVED to validator
     //
+    function rule_required($a)
+    {
+        if ($a==='' || $a===false) {
+            return $this->fail('mandatory');
+        }
+        return $a;
+    }
+
 
 }
