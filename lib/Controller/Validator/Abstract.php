@@ -23,7 +23,7 @@ class Controller_Validator_Abstract extends \AbstractController {
                 array_shift($args);
 
                 call_user_func_array(array($that,'is'),$args);
-                $that->on('beforeSave');
+                $that->on('beforeSave',null,true);
                 return $m;
             });
         }
@@ -127,15 +127,24 @@ class Controller_Validator_Abstract extends \AbstractController {
     /**
      * Call this to set a different hook when rules are going to be
      * applied. By default you have to call now()
+     *
+     * on() used by default for when validator is added, however if
+     * you call it manually (avoiding 3rd argument) it will override
+     * the default hook. This is done to avoid double-validation
      */
     public $custom_hook=false;
     function on($hook,$object=null,$default_hook=false)
     {
         if(!$object)$object=$this->owner;
+        if(!$default_hook)$this->custom_hook=true;
 
         $this->has_hook=true;
+        $that=$this;
 
-        $object->addHook($hook,array($this,'applyRulesets'));
+        $object->addHook($hook,function($m) use ($default_hook,$that){
+            if ($that->custom_hook && $default_hook) return;
+            $that->applyRulesets();
+        });
     }
 
     /**
