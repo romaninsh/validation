@@ -60,7 +60,7 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
 
     function rule_eq($a){
         $b=$this->pullRule();
-        if($a!=$this->get($b))return $this->fail('must be equal to {{arg1}}');
+        if($a!=$b)return $this->fail('must be equal to {{arg1}}');
     }
 
     function rule_ne($a){

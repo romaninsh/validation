@@ -13,8 +13,20 @@ class Controller_Validator_Abstract extends \AbstractController {
     function init()
     {
         parent::init();
+        $that=$this;
 
         $this->source=$this->owner; // must support set/get interface
+        if ($this->source instanceof \Model) {
+
+            $this->source->addMethod('is',function($m) use ($that){
+                $args=func_get_args();
+                array_shift($args);
+
+                call_user_func_array(array($that,'is'),$args);
+                $that->on('beforeSave');
+                return $m;
+            });
+        }
     }
 
 
@@ -116,11 +128,14 @@ class Controller_Validator_Abstract extends \AbstractController {
      * Call this to set a different hook when rules are going to be
      * applied. By default you have to call now()
      */
-    function on($hook,$object=null)
+    public $custom_hook=false;
+    function on($hook,$object=null,$default_hook=false)
     {
         if(!$object)$object=$this->owner;
 
-        $object->addHook($hook,array($this,'applyRules'));
+        $this->has_hook=true;
+
+        $object->addHook($hook,array($this,'applyRulesets'));
     }
 
     /**
