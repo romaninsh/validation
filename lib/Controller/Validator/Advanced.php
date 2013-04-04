@@ -34,10 +34,9 @@ class Controller_Validator_Advanced extends Controller_Validator_Basic {
                 substr($field_definition[count($field_definition)-1],0,-1);
             array_unshift($normalized_rules,'required');
         };
+
         return $field_definition;
-
     }
-
 
     /**
      * Inclusive range check
@@ -58,6 +57,7 @@ class Controller_Validator_Advanced extends Controller_Validator_Basic {
         }
         return $a;
     }
+
     function rule_as($a){
 
         $b=$this->pullRule();

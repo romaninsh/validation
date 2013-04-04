@@ -30,7 +30,8 @@ class Controller_Validator_Abstract extends \AbstractController {
     }
 
 
-    // {{{ Rule initialization and normalization methods
+    //  Rule initialization and normalization methods
+
     /**
      * This method will go through all the rules you specify, expand
      * and normalize them and assign into array indexed by field name.
@@ -57,7 +58,6 @@ class Controller_Validator_Abstract extends \AbstractController {
             return $this;
         }
 
-
         // If ruleset is specified as a string, we need to expand it
         // into an array.
         if (count($args)==1) {
@@ -78,7 +78,7 @@ class Controller_Validator_Abstract extends \AbstractController {
     }
 
     /**
-     * If you are adding this controller inside a model, you don't need to
+     * If you are adding this Controller inside a Model, you don't need to
      * set source. If you want controller to work with an array or some other
      * object, use setSource()
      */
@@ -114,9 +114,9 @@ class Controller_Validator_Abstract extends \AbstractController {
         return explode(',',$field_definition);
     }
 
-    // }}}
+    //
 
-    // {{{ Supplimentary configuration methods
+    //  Supplimentary configuration methods
     /**
      * Call this to get list of parsed rules for specified field.
      */
@@ -154,25 +154,25 @@ class Controller_Validator_Abstract extends \AbstractController {
         return $this->applyRulesets();
     }
 
-    // }}}
+    //
 
-    // {{{ Internal Methods to be used by rule_*
+    //  Internal Methods to be used by rule_*
 
 
-    // }}}
+    //
 
-    // {{{ Methods which are essential when applying rules
+    //  Methods which are essential when applying rules
     /**
      * Get list of fields which we are going to validate. In some cases
-     * it makes no sense to validate fields which are not appearing individual
+     * it makes no sense to validate fields which are not appearing individually
      * the form, therefore this method will look carefully at what you are
-     * validating 
+     * validating
      */
     function getActualFields(){
         return array_keys($this->rules);
     }
 
-    /** 
+    /**
      * Go through the list of defined rules and call the corresponding
      * filters and convertors.
      */
@@ -196,6 +196,7 @@ class Controller_Validator_Abstract extends \AbstractController {
     function pullRule(){
         return $this->consumed[]=array_shift($this->current_ruleset);
     }
+
     /**
      * Adds new rule into a rule-set, which will be executed next.
      * You can specify single or multiple rules, this method accepts
@@ -270,7 +271,7 @@ class Controller_Validator_Abstract extends \AbstractController {
                 if( (is_object($rule) || is_array($rule)) && is_callable($rule)){
                     $tmp = $rule($this,$this->acc,$field);
                 }else{
-                    // to_XX 
+                    // to_XX
                     if(substr($rule,0,3)=='to_'){
                         if(!$this->hasMethod('rule_'.$rule)) {
                             $rule=substr($rule,3);
@@ -320,10 +321,10 @@ class Controller_Validator_Abstract extends \AbstractController {
         $this->bail_out=true;
     }
 
-    // }}}
+    //
 
     /**
-     * Will process individual rule 
+     * Will process individual rule
      */
     function rule_fail(){
         return $this->fail('is incorrect');
@@ -335,10 +336,8 @@ class Controller_Validator_Abstract extends \AbstractController {
     function rule_required($a)
     {
         if ($a==='' || $a===false) {
-            return $this->fail('mandatory');
+            return $this->fail('Must not be empty');
         }
         return $a;
     }
-
-
 }
