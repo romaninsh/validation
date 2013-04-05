@@ -57,6 +57,25 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
         if($result !== null) return $this->fail('Value "{{arg1}}" already exists', $a);
     }
 
+    function rule_in($a)
+    {
+        $vals = $this->prep_in_vals($a);
+        if(!in_array($a, $vals)) return $this->fail('Not a valid value');;
+    }
+
+    function rule_not_in($a)
+    {
+        $vals = $this->prep_in_vals($a);
+        if(in_array($a, $vals)) return $this->fail('Not a valid value');;
+    }
+
+    protected function prep_in_vals($a)
+    {
+        $vals=explode(',', $this->pullRule());
+        array_walk($vals, create_function('&$val', '$val = trim($val);'));
+        return $vals;
+    }
+
     /**
      * Inclusive range check
      *

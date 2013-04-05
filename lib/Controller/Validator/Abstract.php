@@ -110,7 +110,11 @@ class Controller_Validator_Abstract extends \AbstractController {
     function normalizeRules($rules)
     {
         list($field,$rules)=explode('|',$rules,2);
-        $rules=preg_split('/[|,:]/',$rules);
+
+        // TODO: Is this a bug? On can't work
+        // if we split on a comma.
+        //$rules=preg_split('/[|,:]/',$rules);
+        $rules=preg_split('/[|:]/',$rules);
         return array($field,$rules);
     }
 
