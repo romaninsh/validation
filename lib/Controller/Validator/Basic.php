@@ -15,39 +15,60 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
         );
     }
 
+    function rule_required($a)
+    {
+        if ($a==='' || $a===false) {
+            return $this->fail('Must not be empty');
+        }
+    }
+
     //
     // SINGLE VALUE VALIDATION RULES
     //
 
     /**
-     * Inclusive numeric range check
-     */
-    function rule_range($a)
-    {
-        $min=$this->pullRule();
-        $max=$this->pullRule();
-        if($a < $min || $a > $max) return $this->fail('Number must between {{arg1}} and {{arg2}}');
-    }
-
-    /**
-     * Inclusive length range check
+     * Inclusive range check
      *
-     * Next 2 rules must specify the min
+     * Overloaded: checks value for numbers,
+     * string-length for other values.
      *
+     * Next 2 rules must specify the min and max
      */
     function rule_between($a)
     {
         $min=$this->pullRule();
         $max=$this->pullRule();
-        $len = strlen($a);
-        if($len < $min || $len > $max) return $this->fail('Must be between {{arg1}} and {{arg2}} characters long');
+
+        if(is_numeric($a)){
+
+            if($a < $min || $a > $max) return $this->fail('Must be between {{arg1}} and {{arg2}}', $min, $max);
+
+        } else {
+
+            $len = $this->mb_str_len($a);
+            if($len < $min || $len > $max) return $this->fail('Must be between {{arg1}} and {{arg2}} characters long', $min, $max);
+        }
     }
 
-    function rule_length($a)
+    function rule_len($a)
     {
         $target=$this->pullRule();
-        $actual = strlen($a);
-        if($target != $actual) return $this->fail('Must be {{arg1}} characters long');
+        $actual = $this->mb_str_len($a);
+        if($target != $actual) return $this->fail('Must be {{arg1}} characters long', $target);
+    }
+
+    function rule_len_gt($a)
+    {
+        $target=$this->pullRule();
+        $actual = $this->mb_str_len($a);
+        if($actual <= $target) return $this->fail('Must be more than {{arg1}} characters long', $target);
+    }
+
+    function rule_len_lt($a)
+    {
+        $target=$this->pullRule();
+        $actual = $this->mb_str_len($a);
+        if($actual >= $target) return $this->fail('Must be less than {{arg1}} characters long');
     }
 
     function rule_int($a)
@@ -55,8 +76,6 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
         if( ! filter_var($a, FILTER_VALIDATE_INT)){
             return $this->fail('Must be an integer');
         }
-
-        return (int)$a;
     }
 
     /**
@@ -77,7 +96,7 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
     function rule_alpha_unicode($a)
     {
         $msg = 'Must contain only letters';
-        if(!preg_match('/^([\p{L}])+$/', $a)) return $this->fail($msg);
+        if(!preg_match('/^([\p{L}])+$/u', $a)) return $this->fail($msg);
     }
 
     /**
@@ -98,7 +117,7 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
     function rule_alpha_num_unicode($a)
     {
         $msg = 'Must contain only letters and numbers';
-        if(!preg_match('/^([\p{L}0-9])+$/', $a)) return $this->fail($msg);
+        if(!preg_match('/^([\p{L}0-9])+$/u', $a)) return $this->fail($msg);
     }
 
     /**
@@ -119,7 +138,7 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
     function rule_alpha_num_dash_unicode($a)
     {
         $msg = 'Must contain only letters, numbers and dashes';
-        if(!preg_match('/^([\p{L}0-9_-])+$/', $a)) return $this->fail($msg);
+        if(!preg_match('/^([\p{L}0-9_-])+$/u', $a)) return $this->fail($msg);
     }
 
 	/**
@@ -145,6 +164,8 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
 	 * Validate for true|t|1|yes|y
      *
      * Normalizes to lower case
+     *
+     * Useful for 'if' rules
 	 */
 	function rule_true($a)
 	{
@@ -162,6 +183,8 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
 	 * Validate for false|f|0|no|n
      *
      * Normalizes to lower case
+     *
+     * Useful for 'if' rules
 	 */
 	function rule_false($a)
 	{
@@ -186,8 +209,8 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
      * Requires a regex pattern as the
      * next rule in the chain.
      *
-     * Please give your rule a custom error message to
-     * expain why it has failed.
+     * Please give your rule a custom error message.
+     *
      */
     function rule_regex($a)
     {
@@ -267,7 +290,7 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
     function rule_before($a)
     {
         $time = $this->pullRule();
-        if(strtotime($a) >= strtotime($time)) return $this->fail('Must be before {{arg1}}');;
+        if(strtotime($a) >= strtotime($time)) return $this->fail('Must be before {{arg1}}', $time);;
     }
 
     /**
@@ -277,7 +300,7 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
     function rule_after($a)
     {
         $time = $this->pullRule();
-        if(strtotime($a) <= strtotime($time)) return $this->fail('Must be after {{arg1}}');;
+        if(strtotime($a) <= strtotime($time)) return $this->fail('Must be after {{arg1}}', $time);;
     }
 
 	/**
@@ -333,10 +356,6 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
 
 	/**
      * Validate a card "expires end" date
-     *
-	 * @param  string  $attribute
-	 * @param  mixed   $a
-	 * @return bool
 	 */
 
 	function rule_card_to_date($a)
@@ -348,24 +367,17 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
 
 	/**
      * Validate a card "valid from" date
-     *
-	 * @param  string  $attribute
-	 * @param  mixed   $a
-	 * @return bool
 	 */
 	function rule_card_from_date($a)
     {
+        $msg = 'Not a valid date';
         if(!$this->card_date_helper($a, 'from')) return $this->fail($msg);
     }
 
 	/**
      * Helper for validating card to and from dates
-     *
-	 * @param  string  $a
-	 * @param  mixed   $type
-	 * @return bool
 	 */
-    function card_date_helper($a, $type)
+    protected function card_date_helper($a, $type)
     {
         // Strip out any slash
 
@@ -439,23 +451,29 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
 
     function rule_eq($a){
         $b=$this->pullRule();
-        if($a!=$b) return $this->fail('Must be equal to {{arg1}}');
+        if($a!=$b) return $this->fail('Must be equal to {{arg1}}', $b);
     }
 
     function rule_ne($a){
         $b=$this->pullRule();
-        if($a==$b) return $this->fail('Must not be equal to "{{arg1}}"');
+        if($a==$b) return $this->fail('Must not be equal to {{arg1}}', $b);
     }
 
+    /**
+     * TODO: get field label for error message
+     */
     function rule_eqf($a){
         $b=$this->pullRule();
-        if($a!=$this->get($b)) return $this->fail('Must be same as {{arg1}}');
+        if($a!=$this->get($b)) return $this->fail('Must be same value as field "{{arg1}}"', $b);
     }
 
 
+    /**
+     * TODO: get field label for error message
+     */
     function rule_nef($a){
         $b=$this->pullRule();
-        if($a==$this->get($b)) return $this->fail('Must not be same as {{arg1}}');
+        if($a==$this->get($b)) return $this->fail('Must not be same as field "{{arg1}}"', $b);
     }
 
     //
@@ -465,29 +483,17 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
     // tested in subsequent rules.
     //
 
-    /**
-     * Changes the value being tested
-     * to the length of the original value.
-     *
-     * Run tests on the original value
-     * before calling this!
-     */
-    function rule_len($a)
-    {
-        return strlen($a);
-    }
-
-    function rule_trim($a)
+    function rule_to_trim($a)
     {
         return trim($a);
     }
 
-    function rule_ltrim($a)
+    function rule_to_ltrim($a)
     {
         return ltrim($a);
     }
 
-    function rule_rtrim($a)
+    function rule_to_rtrim($a)
     {
         return rtrim($a);
     }
@@ -513,7 +519,7 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
      */
     function rule_to_alpha_unicode($a)
     {
-        return preg_replace('/[^\p{L}]/', '', $a);
+        return preg_replace('/[^\p{L}]/u', '', $a);
     }
 
     function rule_to_alpha_num($a)
@@ -529,7 +535,7 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
      */
     function rule_to_alpha_num_unicode($a)
     {
-        return preg_replace('/[^\p{L}0-9]/', '', $a);
+        return preg_replace('/[^\p{L}0-9]/u', '', $a);
     }
 
     function rule_to_alpha_num_dash($a)
@@ -545,7 +551,7 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
      */
     function rule_to_alpha_num_dash_unicode($a)
     {
-        return preg_replace('/[^\p{L}0-9_-]/', '', $a);
+        return preg_replace('/[^\p{L}0-9_-]/u', '', $a);
     }
 
     // TO DO: what about decimal formats for other locales?
@@ -554,39 +560,47 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
         return preg_replace('/[^0-9\.]/', '', $a);
     }
 
-    function rule_strip_tags($a)
+    function rule_to_strip_tags($a)
     {
         return strip_tags($a);
     }
 
     function rule_to_lower($a)
     {
-        return strtolower($a);
+        return $this->mb_str_to_lower($a);
     }
 
     function rule_to_upper($a)
     {
-        return strtoupper($a);
-    }
-
-    function rule_to_upper_first($a)
-    {
-        return ucfirst($a);
+        return $this->mb_str_to_upper($a);
     }
 
     function rule_to_upper_words($a)
     {
-        return ucwords($a);
+        return $this->mb_str_to_upper_words($a);
     }
 
     /**
-     * Requires next rule to set
-     * str length for truncation
+     * Truncates, and adds '...' to
+     * end of string.
+     *
+     * Requires parameter 'length'
      */
-    function rule_truncate($a)
+    function rule_to_truncate($a)
     {
         $len=$this->pullRule();
-        return substr($a, 0, $len);
+        return $this->mb_truncate($a, $len);
+    }
+
+    /**
+     * Requires parameters: length,
+     * custom string to end of string.
+     */
+    function rule_to_truncate_custom($a)
+    {
+        $len=$this->pullRule();
+        $append=$this->pullRule();
+        return $this->mb_truncate($a, $len, $append);
     }
 
     function rule_to_digits_and_single_spaces($a)
@@ -602,17 +616,9 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
     }
 
     /**
-     * Strips all but A-Za-z0-9_-
-     */
-    function rule_to_system_id($a)
-    {
-        return preg_replace("|[^A-Za-z0-9_-]|", '' , $a);
-    }
-
-    /**
      * Strip out all white space
      */
-    function rule_strip_space($a)
+    function rule_to_strip_space($a)
     {
         return preg_replace("/\s/", "",$a);
     }
@@ -620,7 +626,7 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
     /**
      * Reduce sequential whitespaces to a single space
      */
-    function rule_strip_extra_space($a)
+    function rule_to_strip_extra_space($a)
     {
         // 1) Replace all whitespace with a space char
 
@@ -634,11 +640,28 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
     /**
      * Strip out attack characters from names & addresses
      * and other strings where they have no place
+     *
+     * Strips: * ^ <> ? ! () | / \ [] + = % ; ~ `
      */
 
-    function rule_strip_nasties($a)
+    function rule_to_strip_nasties($a)
     {
         return preg_replace("|[\*\^<?>!\"\(\)\|\\\\/\[\]\+=#%;~`]|", '' , $a);
+    }
+
+    function rule_to_quote_meta($a)
+    {
+        return quotemeta($a);
+    }
+
+    function rule_to_add_slashes($a)
+    {
+        return addslashes($a);
+    }
+
+    function rule_to_strip_slashes($a)
+    {
+        return stripslashes($a);
     }
 
     // *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-
@@ -648,7 +671,7 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
     /**
      * Useful for cleaning up input where you don't want to present
      * an error to the user - eg a checkout where ease of use is
-     * more important than accuracy.
+     * more important than accuracy. Can save a lot of re-keying.
      *
      * Some libraries don't clean up names if already in mixed case.
      * Experience shows this isn't very useful, as many users
@@ -667,10 +690,6 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
      * Can handle full names, 1st only, middle only, last only.
      *
      * Cleans up extra whitespace.
-     *
-     * @param string $name
-     * $param bool $is_capitalise_prefix
-     * @return string
      */
 
     function rule_to_name($name, $is_capitalise_prefix = false)

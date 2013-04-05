@@ -2,6 +2,7 @@
 namespace romaninsh\validation;
 
 class Controller_Validator_Abstract extends \AbstractController {
+
     public $rules=array();
 
     public $default_exception='Exception_ValidityCheck';
@@ -10,15 +11,26 @@ class Controller_Validator_Abstract extends \AbstractController {
 
     public $source=null;
 
+    // TODO: refactor to a better place??
+    public $encoding='UTF-8';
+    public $is_mb = false;
+
+
     function init()
     {
         parent::init();
         $that=$this;
 
+        if(function_exists('mb_get_info')){
+
+            $this->is_mb = true;
+        }
+
         $this->source=$this->owner; // must support set/get interface
+
         if ($this->source instanceof \Model) {
 
-            $this->source->addMethod('is',function($m) use ($that){
+            $this->source->addMethod('is', function($m) use ($that){
                 $args=func_get_args();
                 array_shift($args);
 
@@ -28,7 +40,6 @@ class Controller_Validator_Abstract extends \AbstractController {
             });
         }
     }
-
 
     //  Rule initialization and normalization methods
 
@@ -312,10 +323,26 @@ class Controller_Validator_Abstract extends \AbstractController {
         $this->current_ruleset=$crs;
     }
 
-    function fail($str)
+    function fail()
     {
+        $args =  func_get_args();
+        $str = array_shift($args);
+
+        if(count($args) > 0){
+
+            $n = 1;
+
+            foreach($args as $arg)
+            {
+                $tag = sprintf('{{arg%s}}', $n);
+                $str = str_replace($tag, $arg, $str);
+                $n ++;
+            }
+        }
+
         throw $this->exception($this->custom_error?:$str);
     }
+
     function stop()
     {
         $this->bail_out=true;
@@ -326,18 +353,51 @@ class Controller_Validator_Abstract extends \AbstractController {
     /**
      * Will process individual rule
      */
-    function rule_fail(){
-        return $this->fail('is incorrect');
+    function rule_fail()
+    {
+        return $this->fail('Is incorrect');
     }
 
+    ////////////////////////
+    // MB STRING UTILITIES
+    // TODO: refactor to a more sensible place?
+    // TODO Any case for an app config setting
+    // for encoding, perhaps with a default of UTF-8?
+    ////////////////////////
 
-    // TO BE MOVED to validator
-    //
-    function rule_required($a)
+    function mb_str_len($a)
     {
-        if ($a==='' || $a===false) {
-            return $this->fail('Must not be empty');
+         return ($this->is_mb) ? mb_strlen($a, $this->encoding) : strlen($a);
+    }
+
+    function mb_str_to_lower($a)
+    {
+        return ($this->is_mb) ? mb_strtolower($a, $this->encoding) : strtolower($a);
+    }
+
+    function mb_str_to_upper($a)
+    {
+        return ($this->is_mb) ? mb_strtoupper($a, $this->encoding) : strtoupper($a);
+    }
+
+    function mb_str_to_upper_words($a)
+    {
+        if ($this->is_mb)
+        {
+            return mb_convert_case($value, MB_CASE_TITLE, $this->encoding);
         }
-        return $a;
+
+        return ucwords(strtolower($value));
+
+    }
+
+    function mb_truncate($a, $len, $append = '...')
+    {
+        if ($this->is_mb)
+        {
+            return mb_substr($value, 0, $len, $this->encoding) . $append;
+        }
+
+        substr($value, 0, $limit).$end;
     }
 }

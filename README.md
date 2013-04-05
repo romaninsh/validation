@@ -1,25 +1,21 @@
 Agile Validation Library
 =====
 
-This is a validation library for your Aglie Toolkit applications and more.
+This is a powerful validation library for your Agile Toolkit applications and more.
 
 Goals of Agile Validation
 ----
-The reasons why I have created this library instead of re-using 3rd party is
-that there are very few validation rule-based libraries with a simple and
-consise syntax, which can be intuitively understood. 
+There are very few validation libraries with a simple and consise syntax, so I have made this Addon.
 
-Agile Toolkit carries on the design principles of the framework and is very
-similar in it's design to jQuery Chains or DQSL chaining. Here is a typical
-validation query:
+Agile Validation continues on the design principles of the framework, and is very similar in it's design to jQuery Chains or DQSL chaining. Here is a typical validation query:
 
     $validator->is('name|len|<5?Name is too short');
 
-The library allows us to create number of rules, which are sequently checked
-in a consistent pattern. Here are some of my goals which I achieve with Agile
+The library allows us to create number of rules, which are sequentally checked in a consistent pattern. Here are some of my goals which I achieve with Agile
 Validation Library:
 
 ### 1. Minimalistic syntax
+
 Developers avoid validation, because it requires them to write a lot of code.
 Validation should be easy to define and easy to update. Current libraries
 require the use of complex structures and require a lot of writing.

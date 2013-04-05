@@ -25,7 +25,7 @@ class Controller_Validator_Advanced extends Controller_Validator_Basic {
         return parent::resolveRuleAlias($rule);
     }
 
-    function expandFieldDefinition($field_definition,&$normalized_rules)
+    function expandFieldDefinition($field_definition, &$normalized_rules)
     {
         $field_definition=parent::expandFieldDefinition($field_definition,$normalized_rules);
 
