@@ -11,9 +11,11 @@ class Controller_Validator_Abstract extends \AbstractController {
 
     public $source=null;
 
-    // TODO: refactor to a better place??
+    public $active_field; // The field being processed
+
+    // TODO: Multibyte stuff: refactor to a better place??
     public $encoding='UTF-8';
-    public $is_mb = false;
+    public $is_mb = false; // Is the PHP5 multibyte lib available?
 
 
     function init()
@@ -192,7 +194,9 @@ class Controller_Validator_Abstract extends \AbstractController {
         $fields=$this->getActualFields();
 
         foreach($fields as $field){
+
             $rulesets = $this->getRules($field);
+            $this->active_field = $field;
             foreach($rulesets as $rules){
 
                 $this->applyRules($field,$rules);
@@ -229,6 +233,15 @@ class Controller_Validator_Abstract extends \AbstractController {
      */
     function get($field){
         return $this->source[$field];
+    }
+
+    /**
+     * Retuns field name of rule chain
+     * being processed
+     */
+    function get_active_field()
+    {
+        return $this->active_field;
     }
 
     /**
@@ -327,6 +340,8 @@ class Controller_Validator_Abstract extends \AbstractController {
     {
         $args =  func_get_args();
         $str = array_shift($args);
+
+        // Insert any args into placeholders
 
         if(count($args) > 0){
 

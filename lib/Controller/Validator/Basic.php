@@ -15,6 +15,10 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
         );
     }
 
+    //
+    // SINGLE VALUE VALIDATION RULES
+    //
+
     function rule_required($a)
     {
         if ($a==='' || $a===false) {
@@ -22,9 +26,36 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
         }
     }
 
-    //
-    // SINGLE VALUE VALIDATION RULES
-    //
+    /**
+     * Test that value is unique in table
+     *
+     * IMPORTANT NOTE:
+     *
+     * You will normally want to set the ->on('beforeInsert')
+     * hook to run this rule, otherwise record updates will
+     * be blocked.
+     */
+    function rule_unique($a)
+    {
+        // TODO: why is this not working?
+
+        /*
+        if(!$this->owner instanceof Model)
+            throw $this->exception('Use with Model only');
+         */
+
+        $field = $this->get_active_field();
+        $table = $this->owner->table;
+
+        $q = $this->api->db->dsql();
+
+        $result = $q->table($table)
+                ->where($field, $a)
+                ->field($field)
+                ->getOne();
+
+        if($result !== null) return $this->fail('Value "{{arg1}}" already exists', $a);
+    }
 
     /**
      * Inclusive range check
@@ -464,6 +495,7 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
      */
     function rule_eqf($a){
         $b=$this->pullRule();
+        eecho($b);
         if($a!=$this->get($b)) return $this->fail('Must be same value as field "{{arg1}}"', $b);
     }
 
