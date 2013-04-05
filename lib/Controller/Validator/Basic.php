@@ -16,7 +16,7 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
     }
 
     //
-    // VALUE VALIDATION RULES
+    // SINGLE VALUE VALIDATION RULES
     //
 
     /**
@@ -134,17 +134,9 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
         // Changes PHP true/false to 1, 0
         $a = strtolower($a);
 
-        if(!$a == 'true'
-            && !$a == 'false'
-            && !$a == 't'
-            && !$a == 'f'
-            && !$a == 1
-            && !$a == 0
-            && !$a == 'yes'
-            && !$a == 'no'
-            && !$a == 'y'
-            && !$q == 'n')
-        {
+        $vals = array('true', 'false', 't', 'f', 1, 0, 'yes', 'no', 'y', 'n');
+
+        if(! in_array($a, $vals)){
             return $this->fail('Must be a boolean value');
         }
     }
@@ -156,15 +148,12 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
 	 */
 	function rule_true($a)
 	{
-        // Changes PHP true|false to 1, 0
+        // Changes PHP true to 1
         $a = strtolower($a);
 
-        if(!$a == 'true'
-            && !$a == 't'
-            && !$a == 1
-            && !$a == 'yes'
-            && !$a == 'y')
-        {
+        $vals = array('true', 't', 1, 'yes', 'y');
+
+        if(! in_array($a, $vals)){
             return $this->fail('Must be true');
         }
     }
@@ -176,15 +165,12 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
 	 */
 	function rule_false($a)
 	{
-        // Changes PHP true/false to 1, 0
+        // Changes PHP false to 0
         $a = strtolower($a);
 
-        if(!$a == 'false'
-            && !$a == 'f'
-            && !$a == 0
-            && !$a == 'no'
-            && !$q == 'n')
-        {
+        $vals = array('false', 'f', 0, 'no', 'n');
+
+        if(! in_array($a, $vals)){
             return $this->fail('Must be false');
         }
     }
