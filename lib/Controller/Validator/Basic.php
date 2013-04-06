@@ -15,9 +15,7 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
         );
     }
 
-    //
-    // SINGLE VALUE VALIDATION RULES
-    //
+    /* \section Value Test Rules: General */
 
     function rule_required($a)
     {
@@ -37,9 +35,10 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
      */
     function rule_unique($a)
     {
+        /*
+
         // TODO: why is this not working?
 
-        /*
         if(!$this->owner instanceof Model)
             throw $this->exception('Use with Model only');
          */
@@ -57,23 +56,42 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
         if($result !== null) return $this->fail('Value "{{arg1}}" already exists', $a);
     }
 
+    /**
+     * Requires a regex pattern as the
+     * next rule in the chain.
+     *
+     * Please give your rule a custom error message.
+     *
+     */
+    function rule_regex($a)
+    {
+        $opt['regexp'] = $this->pullRule();
+
+        if( ! filter_var($a, FILTER_VALIDATE_REGEXPR, $opt)){
+            return $this->fail('Not a valid value');
+        }
+    }
+
+    /* \section Value Test Rules: Lists, Sizes and Ranges */
+
+    /**
+     * Checks that value is in the list provided.
+     * Syntax: |in|foo,bar,foobar
+     */
     function rule_in($a)
     {
         $vals = $this->prep_in_vals($a);
         if(!in_array($a, $vals)) return $this->fail('Not a valid value');;
     }
 
+    /**
+     * Checks that value is not in the list provided.
+     * Syntax: |not_in|foo,bar,foobar
+     */
     function rule_not_in($a)
     {
         $vals = $this->prep_in_vals($a);
         if(in_array($a, $vals)) return $this->fail('Not a valid value');;
-    }
-
-    protected function prep_in_vals($a)
-    {
-        $vals=explode(',', $this->pullRule());
-        array_walk($vals, create_function('&$val', '$val = trim($val);'));
-        return $vals;
     }
 
     /**
@@ -121,12 +139,29 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
         if($actual >= $target) return $this->fail('Must be less than {{arg1}} characters long');
     }
 
+    /* \section Value Test Rules: Numeric */
+
+    /**
+     * Checks for int or float
+     */
+    function rule_number($a)
+    {
+        if( ! is_numeric($a)) return $this->fail('Must be a number: eg 12.34 or 1234');
+
+    }
+
+    function rule_float($a)
+    {
+        if( ! is_float($a)) return $this->fail('Must be a decimal number: eg 12.34');
+
+    }
+
     function rule_int($a)
     {
-        if( ! filter_var($a, FILTER_VALIDATE_INT)){
-            return $this->fail('Must be an integer');
-        }
+        if( ! is_int($a)) return $this->fail('Must be an integer: eg 1234');
     }
+
+    /* \section Value Test Rules: String */
 
     /**
      * Test for A-Za-z
@@ -191,6 +226,8 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
         if(!preg_match('/^([\p{L}0-9_-])+$/u', $a)) return $this->fail($msg);
     }
 
+    /* \section Value Test Rules: Boolean */
+
 	/**
 	 * Validate for true|false|t|f|1|0|yes|no|y|n
      *
@@ -248,28 +285,7 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
         }
     }
 
-    function rule_email($a)
-    {
-        if( ! filter_var($a, FILTER_VALIDATE_EMAIL)){
-            return $this->fail('Must be a valid email address');
-        }
-    }
-
-    /**
-     * Requires a regex pattern as the
-     * next rule in the chain.
-     *
-     * Please give your rule a custom error message.
-     *
-     */
-    function rule_regex($a)
-    {
-        $opt['regexp'] = $this->pullRule();
-
-        if( ! filter_var($a, FILTER_VALIDATE_REGEXPR, $opt)){
-            return $this->fail('Not a valid value');
-        }
-    }
+    /* \section Value Test Rules: Date & Time */
 
 	/**
 	 * Validate for ISO date in format YYYY-MM-DD
@@ -353,6 +369,76 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
         if(strtotime($a) <= strtotime($time)) return $this->fail('Must be after {{arg1}}', $time);;
     }
 
+    /* \section Value Test Rules: Postal, Email & Credit Card */
+
+    function rule_email($a)
+    {
+        if( ! filter_var($a, FILTER_VALIDATE_EMAIL)){
+            return $this->fail('Must be a valid email address');
+        }
+    }
+
+    /**
+     * Checks for a 5 digit or extended US zip
+     */
+    function rule_zip($a)
+    {
+        if( !preg_match('/^\d{5}(-\d{4})?$/', $a)) return $this->fail('Must be a valid ZIP code');
+    }
+
+    function rule_uk_postcode($a)
+    {
+        $is_valid = true ;
+
+        if(strlen($a) < 6 || strlen($a) > 8)
+        {
+            // Should be 6 - 8 chars ( including the space )
+            $is_valid = false ;
+        }
+        elseif( ! preg_match( "/^[ 0-9A-Z]*$/", $str ) )
+        {
+            // Should only contain [ 0-9A-Z]
+            $is_valid = false ;
+
+        }
+        elseif( substr_count( $str, ' ' ) != 1 )
+        {
+            // Should have 1 space
+            $is_valid = false ;
+        }
+
+
+        if( $is_valid )
+        {
+            // Split into the outward and inward parts
+
+            list( $outward, $inward )= explode( ' ', $str );
+
+            if( ! preg_match( "/^[A-Z0-9]{2,4}$/", $outward))
+            {
+                // Outward should be 2-4 [A-Z0-9]
+                $is_valid = false ;
+            }
+            elseif( ! preg_match( "/^[0-9][A-Z][A-Z]$/", $inward ))
+            {
+                // Inward should be 1 digit and 2 A-Z
+                $is_valid = false ;
+            }
+            elseif( preg_match( "/[CIKMOV]/", $inward ) )
+            {
+                // Inward should not contain C, I, K, M, O or V
+                $is_valid = false ;
+            }
+        }
+
+        if( ! $is_valid)
+        {
+            return $this->fail('Not a valid UK postcode');
+
+        }
+
+    }
+
 	/**
      * Validate for credit card number
      *
@@ -412,7 +498,7 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
     {
 
         $msg = 'Not a valid date';
-        if(!$this->card_date_helper($a, 'to')) return $this->fail($msg);
+        if(!$this->card_date_parser($a, 'to')) return $this->fail($msg);
     }
 
 	/**
@@ -421,83 +507,10 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
 	function rule_card_from_date($a)
     {
         $msg = 'Not a valid date';
-        if(!$this->card_date_helper($a, 'from')) return $this->fail($msg);
+        if(!$this->card_date_parser($a, 'from')) return $this->fail($msg);
     }
 
-	/**
-     * Helper for validating card to and from dates
-	 */
-    protected function card_date_helper($a, $type)
-    {
-        // Strip out any slash
-
-        $date = str_replace('/', '', $a);
-
-        // Check that we have 4 digits
-
-        if(! preg_match("|^[0-9]{4}$|", $date))
-        {
-            return false;
-        }
-
-        $month = substr($date, 0, 2);
-        $year = substr($date, 2, 2);
-
-        // Check month is logical
-
-        if($month > 12)
-        {
-            return false;
-        }
-
-        $parts = array( date('Y'), date('m'), 1);
-        $now_datetime = new DateTime(implode('-', $parts));
-
-        $parts = array('20' . $year, $month, '1');
-        $card_datetime = new DateTime(implode('-', $parts));
-
-        $interval = $now_datetime->diff($card_datetime);
-        $days = $interval->format('%R%a days');
-
-        if($type == 'from')
-        {
-            // Check from date is older or equal to current month
-
-            if($days <= 0 && $days > -3650)
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
-
-        }
-        elseif($type == 'to')
-        {
-            // Check to date is newer or equal to current month
-
-            if($days >= 0 && $days < 3650)
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
-        }
-        else
-        {
-           $msg = "Bad date type '$type' in card-date validation";
-           throw new Error($msg);
-        }
-
-        return $true;
-    }
-
-    //
-    // VALUE COMPARISON FILTERS
-    //
+    /* \section Value Test Rules: Value & Field Comparisons */
 
     function rule_eq($a){
         $b=$this->pullRule();
@@ -514,10 +527,11 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
      */
     function rule_eqf($a){
         $b=$this->pullRule();
-        eecho($b);
-        if($a!=$this->get($b)) return $this->fail('Must be same value as field "{{arg1}}"', $b);
-    }
+        if($a!=$this->get($b)){
 
+            return $this->fail('Must be same value as field "{{arg1}}"', $b);
+        }
+    }
 
     /**
      * TODO: get field label for error message
@@ -527,12 +541,31 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
         if($a==$this->get($b)) return $this->fail('Must not be same as field "{{arg1}}"', $b);
     }
 
-    //
-    // NORMALIZATION & SANITIZATION
-    //
-    // These rules change the value being
-    // tested in subsequent rules.
-    //
+    /* \section Value Conversion Rules: Numeric */
+
+    function rule_to_int($a)
+    {
+        return (int)$a=preg_replace('/[^0-9]/', '', $a);
+    }
+
+    function rule_to_number($a)
+    {
+        return (int)$a=preg_replace('/[^0-9\.]/', '', $a);
+
+    }
+
+    function rule_to_float($a)
+    {
+        return (int)$a=preg_replace('/[^0-9\.]/', '', $a);
+    }
+
+    function rule_to_digits_and_single_spaces($a)
+    {
+        $a= preg_replace("/[^\d ]/", '',$a);
+        return $this->rule_strip_extra_space($a);
+    }
+
+    /* \section Value Conversion Rules: String */
 
     function rule_to_trim($a)
     {
@@ -549,9 +582,20 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
         return rtrim($a);
     }
 
-    function rule_to_int($a)
+    /**
+     * Strip out all white space
+     */
+    function rule_to_strip_space($a)
     {
-        return (int)$a=preg_replace('/[^0-9]/', '', $a);
+        return preg_replace("/\s/", "",$a);
+    }
+
+    /**
+     * Reduce sequential whitespaces to a single space
+     */
+    function rule_to_strip_extra_space($a)
+    {
+        return $this->strip_excess_whitespace($a);
     }
 
     /**
@@ -578,44 +622,6 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
         return preg_replace('/[^a-zA-Z0-9]/', '', $a);
     }
 
-    /**
-     * Test for unicode letter characters and 0-9
-     *
-     * Requires PCRE compiled with  "--enable-unicode-properties".
-     * Most distros these days will offer this
-     */
-    function rule_to_alpha_num_unicode($a)
-    {
-        return preg_replace('/[^\p{L}0-9]/u', '', $a);
-    }
-
-    function rule_to_alpha_num_dash($a)
-    {
-        return preg_replace('/[^a-zA-Z0-9_-]/', '', $a);
-    }
-
-    /**
-     * Test for unicode letter characters and 0-9, -, _
-     *
-     * Requires PCRE compiled with  "--enable-unicode-properties".
-     * Most distros these days will offer this
-     */
-    function rule_to_alpha_num_dash_unicode($a)
-    {
-        return preg_replace('/[^\p{L}0-9_-]/u', '', $a);
-    }
-
-    // TO DO: what about decimal formats for other locales?
-    function rule_to_decimal($a)
-    {
-        return preg_replace('/[^0-9\.]/', '', $a);
-    }
-
-    function rule_to_strip_tags($a)
-    {
-        return strip_tags($a);
-    }
-
     function rule_to_lower($a)
     {
         return $this->mb_str_to_lower($a);
@@ -629,6 +635,24 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
     function rule_to_upper_words($a)
     {
         return $this->mb_str_to_upper_words($a);
+    }
+
+    /* \section Value Conversion Rules: Alphanumeric */
+
+    /**
+     * Strip to unicode letter characters and 0-9
+     *
+     * Requires PCRE compiled with  "--enable-unicode-properties".
+     * Most distros these days will offer this
+     */
+    function rule_to_alpha_num_unicode($a)
+    {
+        return preg_replace('/[^\p{L}0-9]/u', '', $a);
+    }
+
+    function rule_to_alpha_num_dash($a)
+    {
+        return preg_replace('/[^a-zA-Z0-9_-]/', '', $a);
     }
 
     /**
@@ -654,11 +678,18 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
         return $this->mb_truncate($a, $len, $append);
     }
 
-    function rule_to_digits_and_single_spaces($a)
+    /**
+     * Strip to unicode letter characters and 0-9, -, _
+     *
+     * Requires PCRE compiled with  "--enable-unicode-properties".
+     * Most distros these days will offer this
+     */
+    function rule_to_alpha_num_dash_unicode($a)
     {
-        $a= preg_replace("/[^\d ]/", '',$a);
-        return $this->rule_strip_extra_space($a);
+        return preg_replace('/[^\p{L}0-9_-]/u', '', $a);
     }
+
+    /* \section Value Conversion Rules: Date & Time */
 
     function rule_to_iso_date($a)
     {
@@ -666,38 +697,11 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
         return $this->rule_iso_date($a);
     }
 
-    /**
-     * Strip out all white space
-     */
-    function rule_to_strip_space($a)
+    /* \section Value Conversion Rules: Data Sanitization */
+
+    function rule_to_strip_tags($a)
     {
-        return preg_replace("/\s/", "",$a);
-    }
-
-    /**
-     * Reduce sequential whitespaces to a single space
-     */
-    function rule_to_strip_extra_space($a)
-    {
-        // 1) Replace all whitespace with a space char
-
-        $a= preg_replace("/\s/", " ",$a);
-
-        // 2) Turn multiple space to a single space
-
-        return preg_replace("/[ ]{2,}/", " ",$a);
-    }
-
-    /**
-     * Strip out attack characters from names & addresses
-     * and other strings where they have no place
-     *
-     * Strips: * ^ <> ? ! () | / \ [] + = % ; ~ `
-     */
-
-    function rule_to_strip_nasties($a)
-    {
-        return preg_replace("|[\*\^<?>!\"\(\)\|\\\\/\[\]\+=#%;~`]|", '' , $a);
+        return strip_tags($a);
     }
 
     function rule_to_quote_meta($a)
@@ -713,6 +717,46 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
     function rule_to_strip_slashes($a)
     {
         return stripslashes($a);
+    }
+
+    /**
+     * Strip out attack characters from names & addresses
+     * and other strings where they have no place
+     *
+     * Strips: * ^ <> ? ! () | / \ [] + = % ; ~ `
+     */
+
+    function rule_to_strip_nasties($a)
+    {
+        return preg_replace("|[\*\^<?>!\"\(\)\|\\\\/\[\]\+=#%;~`]|", '' , $a);
+    }
+
+    /* \section Value Conversion Rules: Phone, Name, Address */
+
+    /**
+     * Normalizes, then validates
+     */
+    function rule_to_zip($a)
+    {
+        // Change 12345 1234 to 12345-1234
+        $a = preg_replace('/[^0-9-]/', '', $a);
+        $this->rule_zip($a);
+    }
+
+    /**
+     * Normalizes, then validates
+     */
+    function rule_to_uk_postcode($a)
+    {
+        // Normalize to upper case
+
+        $a = strtoupper(trim($a)) ;
+
+        // Revove extra spaces
+
+        $a = preg_replace("/[ ]{2,}/", ' ', $a) ;
+
+        $this->uk_postcode($a);
     }
 
     // *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-
@@ -773,7 +817,7 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
             Dear Mr Von Trapp
 
             By default we store in the lower case form.
-            Set the param $is_capitalise_prefix to TRUE
+            Set the param $is_capitalise_prefix to true
             to capitalise.
 
         2) In default mode, St is capitalised,
@@ -888,7 +932,7 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
 
         // Clean out extra whitespace
 
-        $name = $this->rule_strip_extra_space(trim ($name));
+        $name = $this->strip_excess_whitespace(trim($name));
 
         // Try to parse into forenames, main name, suffix
 
@@ -924,7 +968,7 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
                 // Last part is the main name
 
                 $name_main = $part;
-                $name_suffix = FALSE;
+                $name_suffix = false;
             }
         }
 
@@ -936,7 +980,7 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
         }
         else
         {
-            $name_fnames = FALSE;
+            $name_fnames = false;
         }
 
         // We build the name from first to last:
@@ -964,7 +1008,7 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
 
                     if(array_key_exists($part, $prefixes))
                     {
-                        if($is_capitalise_prefix !== FALSE)
+                        if($is_capitalise_prefix !== false)
                         {
                             $parts[] = $prefixes[$part]["upper"];
                         }
@@ -1058,14 +1102,95 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
         return $output;
     }
 
-    //
-    // TESTING
-    //
+    /* \section Helper Functions */
 
-    function rule_hello($a){
-        if($a!='hello'){
-            return $this->fail('Type "hello" in here');
+    /**
+     * Reduce sequential whitespaces to a single space
+     */
+    protected function strip_excess_whitespace($a)
+    {
+        return preg_replace('/\s\s+/', ' ', $a);
+    }
+
+	/**
+     * Helper for validating card to and from dates
+	 */
+    protected function card_date_parser($a, $type)
+    {
+        // Strip out any slash
+
+        $date = str_replace('/', '', $a);
+
+        // Check that we have 4 digits
+
+        if(! preg_match("|^[0-9]{4}$|", $date))
+        {
+            return false;
         }
-        return 'Hello World';
+
+        $month = substr($date, 0, 2);
+        $year = substr($date, 2, 2);
+
+        // Check month is logical
+
+        if($month > 12)
+        {
+            return false;
+        }
+
+        $parts = array( date('Y'), date('m'), 1);
+        $now_datetime = new DateTime(implode('-', $parts));
+
+        $parts = array('20' . $year, $month, '1');
+        $card_datetime = new DateTime(implode('-', $parts));
+
+        $interval = $now_datetime->diff($card_datetime);
+        $days = $interval->format('%R%a days');
+
+        if($type == 'from')
+        {
+            // Check from date is older or equal to current month
+
+            if($days <= 0 && $days > -3650)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+
+        }
+        elseif($type == 'to')
+        {
+            // Check to date is newer or equal to current month
+
+            if($days >= 0 && $days < 3650)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+        else
+        {
+           $msg = "Bad date type '$type' in card-date validation";
+           throw new Error($msg);
+        }
+
+        return $true;
+    }
+
+    /**
+     * Explode and trim a comma-delmited list
+     * for the in and not_in rules.
+     */
+    protected function prep_in_vals($a)
+    {
+        $vals=explode(',', $this->pullRule());
+        array_walk($vals, create_function('&$val', '$val = trim($val);'));
+        return $vals;
     }
 }
