@@ -87,6 +87,7 @@ class Controller_Validator_Abstract extends \AbstractController {
         foreach ($fields as $field) {
             $this->rules[$field][]=$rules;
         }
+
         return $this;
     }
 
@@ -109,13 +110,42 @@ class Controller_Validator_Abstract extends \AbstractController {
      */
     function normalizeRules($rules)
     {
-        list($field,$rules)=explode('|',$rules,2);
+        // If you want to use a pipe in a regex, custom message etc,
+        // single-quote the string (escaping would be too confusing in regexes):
+        //
+        // This works with:
+        //
+        // 'foo?\'my piped | string\''
+        // "foo?'my piped | string'"
 
-        // TODO: Is this a bug? On can't work
-        // if we split on a comma.
-        //$rules=preg_split('/[|,:]/',$rules);
-        $rules=preg_split('/[|:]/',$rules);
-        return array($field,$rules);
+        $p = "/(?:[^\|\']|\'((?<=\\\\)\'|[^\'])*\')*/x";
+        preg_match_all($p, $rules, $matches);
+
+        $chain = array();
+        $n = 1;
+
+        foreach($matches[0] as $rule)
+        {
+            if( ! empty($rule))
+            {
+                // Trim whitespace and quotes from ends of rule
+
+                $rule = trim($rule, " '");
+
+                if($n == 1)
+                {
+                    $field = $rule;
+                }
+                else
+                {
+                    $chain[] = $rule;
+                }
+
+                $n ++;
+            }
+        }
+
+        return array($field, $chain);
     }
 
     /**
@@ -251,18 +281,33 @@ class Controller_Validator_Abstract extends \AbstractController {
     /**
      * Changes the original value of the field (for normalization)
      */
-    function set($field,$value){
+    function set($field,$value)
+    {
         $this->source[$field]=$value;
         return $this;
     }
 
-    function resolveRuleAlias($rule){
+    function resolveRuleAlias($rule)
+    {
         if(isset($this->alias[$rule])){
             $rule=$this->alias[$rule];
         }
 
-        if(strpos($rule,'?')!==false){
-            list($rule,$this->custom_error)=explode('?',$rule,2);
+        // Only rule names are passed here,
+        // not args, so a comma could only be
+        // a custom message.
+
+        // TODO: but what about array validation?
+        // Probably a rare edge case, but we
+        // should mention it in the docs??
+
+        if(strpos($rule,'?') !== false){
+
+            list($rule, $error)=explode('?', $rule, 2);
+
+            // Trim off any leading quote from from
+            // the error message
+            $this->custom_error = preg_replace('/^\'/', '', $error);
         }
 
         return $rule;
@@ -277,8 +322,8 @@ class Controller_Validator_Abstract extends \AbstractController {
     /**
      * This is the main body for rule processing.
      */
-    function applyRules($field,$ruleset){
-
+    function applyRules($field,$ruleset)
+    {
         // Save previous values, just in case
         $acc=$this->acc;
         $crs=$this->current_ruleset;
@@ -288,6 +333,7 @@ class Controller_Validator_Abstract extends \AbstractController {
         $this->current_ruleset=$ruleset;
 
         while(!is_null($rule=$this->pullRule())){
+
             $this->cast=false;
             $this->custom_error=null;
 
@@ -297,21 +343,31 @@ class Controller_Validator_Abstract extends \AbstractController {
 
             try{
                 if( (is_object($rule) || is_array($rule)) && is_callable($rule)){
+
                     $tmp = $rule($this,$this->acc,$field);
+
                 }else{
-                    // to_XX
+                    // For to_XX rules
                     if(substr($rule,0,3)=='to_'){
+
                         if(!$this->hasMethod('rule_'.$rule)) {
                             $rule=substr($rule,3);
                         }
+
                         $this->cast=true;
                     }
+
                     if($rule===''){
                         if($this->cast)$this->set($field,$this->acc);
                         continue;
                     }
 
                     $rule=$this->resolveRuleAlias($rule);
+
+                    if($rule === ''){
+                        continue;
+                    }
+
                     $tmp = $this->{'rule_'.$rule}($this->acc,$field);
                 }
 
@@ -321,8 +377,9 @@ class Controller_Validator_Abstract extends \AbstractController {
                 }
 
                 if(!is_null($tmp))$this->acc=$tmp;
-                if($this->cast)$this->set($field,$tmp);
-                if($this->bail_out)break;
+                if($this->cast)$this->set($field, $tmp);
+                if($this->bail_out) break;
+
             } catch (\Exception_ValidityCheck $e) {
                 if($this->debug){
                     echo "<font color=red>rule_$rule({$this->acc},".
