@@ -72,7 +72,7 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
         }
     }
 
-    /* \section Value Test Rules: Lists, Sizes and Ranges */
+    /* \section Value Test Rules: Value Lists */
 
     /**
      * Checks that value is in the list provided.
@@ -93,6 +93,8 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
         $vals = $this->prep_in_vals($a);
         if(in_array($a, $vals)) return $this->fail('Not a valid value');;
     }
+
+    /* \section Value Test Rules: Lengths and Ranges */
 
     /**
      * Inclusive range check
@@ -386,59 +388,6 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
         if( !preg_match('/^\d{5}(-\d{4})?$/', $a)) return $this->fail('Must be a valid ZIP code');
     }
 
-    function rule_uk_postcode($a)
-    {
-        $is_valid = true ;
-
-        if(strlen($a) < 6 || strlen($a) > 8)
-        {
-            // Should be 6 - 8 chars ( including the space )
-            $is_valid = false ;
-        }
-        elseif( ! preg_match( "/^[ 0-9A-Z]*$/", $str ) )
-        {
-            // Should only contain [ 0-9A-Z]
-            $is_valid = false ;
-
-        }
-        elseif( substr_count( $str, ' ' ) != 1 )
-        {
-            // Should have 1 space
-            $is_valid = false ;
-        }
-
-
-        if( $is_valid )
-        {
-            // Split into the outward and inward parts
-
-            list( $outward, $inward )= explode( ' ', $str );
-
-            if( ! preg_match( "/^[A-Z0-9]{2,4}$/", $outward))
-            {
-                // Outward should be 2-4 [A-Z0-9]
-                $is_valid = false ;
-            }
-            elseif( ! preg_match( "/^[0-9][A-Z][A-Z]$/", $inward ))
-            {
-                // Inward should be 1 digit and 2 A-Z
-                $is_valid = false ;
-            }
-            elseif( preg_match( "/[CIKMOV]/", $inward ) )
-            {
-                // Inward should not contain C, I, K, M, O or V
-                $is_valid = false ;
-            }
-        }
-
-        if( ! $is_valid)
-        {
-            return $this->fail('Not a valid UK postcode');
-
-        }
-
-    }
-
 	/**
      * Validate for credit card number
      *
@@ -539,6 +488,23 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
     function rule_nef($a){
         $b=$this->pullRule();
         if($a==$this->get($b)) return $this->fail('Must not be same as field "{{arg1}}"', $b);
+    }
+
+    /* \section Value Conversion Rules: General */
+
+    /**
+     * Runs preg_replace on the pattern provided
+     * in the argument.
+     *
+     * The pattern should include the pattern delimiter, eg:
+     *
+     * /my_pattern/
+     *
+     *
+     */
+    function to_preg()
+    {
+
     }
 
     /* \section Value Conversion Rules: Numeric */
@@ -743,21 +709,6 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
         $this->rule_zip($a);
     }
 
-    /**
-     * Normalizes, then validates
-     */
-    function rule_to_uk_postcode($a)
-    {
-        // Normalize to upper case
-
-        $a = strtoupper(trim($a)) ;
-
-        // Revove extra spaces
-
-        $a = preg_replace("/[ ]{2,}/", ' ', $a) ;
-
-        $this->uk_postcode($a);
-    }
 
     // *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-
     // PERSONAL NAMES (European style)
