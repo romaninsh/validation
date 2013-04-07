@@ -177,13 +177,13 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
     /**
      * Test for unicode letter characters
      *
-     * Requires PCRE compiled with  "--enable-unicode-properties".
-     * Most distros these days will offer this
+     * Should work even is PCRE compiled
+     * without "--enable-unicode-properties".
      */
     function rule_alpha_unicode($a)
     {
         $msg = 'Must contain only letters';
-        if(!preg_match('/^([\p{L}])+$/u', $a)) return $this->fail($msg);
+        if(!preg_match('/(*UTF8)^([\p{L}])+$/u', $a)) return $this->fail($msg);
     }
 
     /**
@@ -198,13 +198,13 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
     /**
      * Test for unicode letter characters and digits
      *
-     * Requires PCRE compiled with  "--enable-unicode-properties".
-     * Most distros these days will offer this
+     * Should work even is PCRE compiled
+     * without "--enable-unicode-properties".
      */
     function rule_alpha_num_unicode($a)
     {
         $msg = 'Must contain only letters and numbers';
-        if(!preg_match('/^([\p{L}0-9])+$/u', $a)) return $this->fail($msg);
+        if(!preg_match('/(*UTF8)^^([\p{L}0-9])+$/u', $a)) return $this->fail($msg);
     }
 
     /**
@@ -219,13 +219,13 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
     /**
      * Test for unicode letter characters and digits
      *
-     * Requires PCRE compiled with  "--enable-unicode-properties".
-     * Most distros these days will offer this
+     * Should work even is PCRE compiled
+     * without "--enable-unicode-properties".
      */
     function rule_alpha_num_dash_unicode($a)
     {
         $msg = 'Must contain only letters, numbers and dashes';
-        if(!preg_match('/^([\p{L}0-9_-])+$/u', $a)) return $this->fail($msg);
+        if(!preg_match('/(*UTF8)^([\p{L}0-9_-])+$/u', $a)) return $this->fail($msg);
     }
 
     /* \section Value Test Rules: Boolean */
@@ -575,12 +575,12 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
     /**
      * Test for unicode letter characters
      *
-     * Requires PCRE compiled with  "--enable-unicode-properties".
-     * Most distros these days will offer this
+     * Should work even is PCRE compiled
+     * without "--enable-unicode-properties".
      */
     function rule_to_alpha_unicode($a)
     {
-        return preg_replace('/[^\p{L}]/u', '', $a);
+        return preg_replace('/(*UTF8)[^\p{L}]/u', '', $a);
     }
 
     function rule_to_alpha_num($a)
@@ -608,12 +608,12 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
     /**
      * Strip to unicode letter characters and 0-9
      *
-     * Requires PCRE compiled with  "--enable-unicode-properties".
-     * Most distros these days will offer this
+     * Should work even is PCRE compiled
+     * without "--enable-unicode-properties".
      */
     function rule_to_alpha_num_unicode($a)
     {
-        return preg_replace('/[^\p{L}0-9]/u', '', $a);
+        return preg_replace('/(*UTF8)[^\p{L}0-9]/u', '', $a);
     }
 
     function rule_to_alpha_num_dash($a)
@@ -652,7 +652,7 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
      */
     function rule_to_alpha_num_dash_unicode($a)
     {
-        return preg_replace('/[^\p{L}0-9_-]/u', '', $a);
+        return preg_replace('/(*UTF8)[^\p{L}0-9_-]/u', '', $a);
     }
 
     /* \section Value Conversion Rules: Date & Time */
