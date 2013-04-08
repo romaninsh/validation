@@ -493,18 +493,18 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
     /* \section Value Conversion Rules: General */
 
     /**
-     * Runs preg_replace on the pattern provided
-     * in the argument.
+     * Strips out the characters matched by the
+     * pattern in the argument.
      *
      * The pattern should include the pattern delimiter, eg:
      *
      * /my_pattern/
-     *
-     *
      */
-    function to_preg()
+    function to_strip_regex($a)
     {
+        $pattern = $this->pullRule();
 
+        return preg_replace($pattern, '', $a);
     }
 
     /* \section Value Conversion Rules: Numeric */
