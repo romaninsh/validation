@@ -328,11 +328,15 @@ class Controller_Validator_Abstract extends \AbstractController {
         $acc=$this->acc;
         $crs=$this->current_ruleset;
         $this->bail_out=false;
+        $is_required = false;
 
         $this->acc=$this->get($field);
         $this->current_ruleset=$ruleset;
 
         while(!is_null($rule=$this->pullRule())){
+
+            if($rule == 'required')
+                $is_required = true;
 
             $this->cast=false;
             $this->custom_error=null;
@@ -341,56 +345,55 @@ class Controller_Validator_Abstract extends \AbstractController {
             $tmp=null;
             $this->consumed=array($rule);
 
-            try{
-                if( (is_object($rule) || is_array($rule)) && is_callable($rule)){
+            if($is_required || $this->acc !== '')
+            {
+                try{
+                    if( (is_object($rule) || is_array($rule)) && is_callable($rule)){
 
-                    $tmp = $rule($this,$this->acc,$field);
+                        $tmp = $rule($this,$this->acc,$field);
 
-                }else{
-                    // For to_XX rules
-                    if(substr($rule,0,3)=='to_'){
+                    }else{
+                        // For to_XX rules
+                        if(substr($rule,0,3)=='to_'){
 
-                        if(!$this->hasMethod('rule_'.$rule)) {
-                            $rule=substr($rule,3);
+                            if(!$this->hasMethod('rule_'.$rule)) {
+                                $rule=substr($rule,3);
+                            }
+
+                            $this->cast=true;
                         }
 
-                        $this->cast=true;
+                        if($rule===''){
+                            if($this->cast)$this->set($field,$this->acc);
+                            continue;
+                        }
+
+                        $rule=$this->resolveRuleAlias($rule);
+
+                        $tmp = $this->{'rule_'.$rule}($this->acc,$field);
                     }
 
-                    if($rule===''){
-                        if($this->cast)$this->set($field,$this->acc);
-                        continue;
+                    if($this->debug){
+                        echo "<font color=blue>rule_$rule({$this->acc},".
+                            join(',',$this->consumed).")=$tmp</font><br/>";
                     }
 
-                    $rule=$this->resolveRuleAlias($rule);
+                    if(!is_null($tmp))$this->acc=$tmp;
+                    if($this->cast)$this->set($field, $tmp);
+                    if($this->bail_out) break;
 
-                    if($rule === ''){
-                        continue;
+                } catch (\Exception_ValidityCheck $e) {
+                    if($this->debug){
+                        echo "<font color=red>rule_$rule({$this->acc},".
+                            join(',',$this->consumed).") failed</font><br/>";
                     }
-
-                    $tmp = $this->{'rule_'.$rule}($this->acc,$field);
+                    $this->acc=$acc;
+                    $this->current_ruleset=$crs;
+                    throw $e
+                        ->setField($field)
+                        ->addMoreInfo('val',$this->acc)
+                        ->addMoreInfo('rule',$rule);
                 }
-
-                if($this->debug){
-                    echo "<font color=blue>rule_$rule({$this->acc},".
-                        join(',',$this->consumed).")=$tmp</font><br/>";
-                }
-
-                if(!is_null($tmp))$this->acc=$tmp;
-                if($this->cast)$this->set($field, $tmp);
-                if($this->bail_out) break;
-
-            } catch (\Exception_ValidityCheck $e) {
-                if($this->debug){
-                    echo "<font color=red>rule_$rule({$this->acc},".
-                        join(',',$this->consumed).") failed</font><br/>";
-                }
-                $this->acc=$acc;
-                $this->current_ruleset=$crs;
-                throw $e
-                    ->setField($field)
-                    ->addMoreInfo('val',$this->acc)
-                    ->addMoreInfo('rule',$rule);
             }
         }
         $this->acc=$acc;
