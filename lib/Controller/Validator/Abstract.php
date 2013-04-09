@@ -335,11 +335,11 @@ class Controller_Validator_Abstract extends \AbstractController {
 
         while(!is_null($rule=$this->pullRule())){
 
-            if($rule == 'required')
-                $is_required = true;
-
             $this->cast=false;
             $this->custom_error=null;
+
+            if($rule == 'required')
+                $is_required = true;
 
             // For debugging
             $tmp=null;

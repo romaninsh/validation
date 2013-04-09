@@ -120,7 +120,38 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
         }
     }
 
-    function rule_len($a)
+    /* \section Value Test Rules: Value & Field Comparisons */
+
+    function rule_eq($a){
+        $b=$this->pullRule();
+        if($a!=$b) return $this->fail('Must be equal to {{arg1}}', $b);
+    }
+
+    function rule_ne($a){
+        $b=$this->pullRule();
+        if($a==$b) return $this->fail('Must not be equal to {{arg1}}', $b);
+    }
+
+    /**
+     * TODO: get field caption for error message?
+     */
+    function rule_eqf($a){
+        $b=$this->pullRule();
+        if($a!=$this->get($b)){
+
+            return $this->fail('Must be same value as field "{{arg1}}"', $b);
+        }
+    }
+
+    /**
+     * TODO: get field caption for error message?
+     */
+    function rule_nef($a){
+        $b=$this->pullRule();
+        if($a==$this->get($b)) return $this->fail('Must not be same as field "{{arg1}}"', $b);
+    }
+
+    function rule_len_eq($a)
     {
         $target=$this->pullRule();
         $actual = $this->mb_str_len($a);
@@ -457,37 +488,6 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
     {
         $msg = 'Not a valid date';
         if(!$this->card_date_parser($a, 'from')) return $this->fail($msg);
-    }
-
-    /* \section Value Test Rules: Value & Field Comparisons */
-
-    function rule_eq($a){
-        $b=$this->pullRule();
-        if($a!=$b) return $this->fail('Must be equal to {{arg1}}', $b);
-    }
-
-    function rule_ne($a){
-        $b=$this->pullRule();
-        if($a==$b) return $this->fail('Must not be equal to {{arg1}}', $b);
-    }
-
-    /**
-     * TODO: get field label for error message
-     */
-    function rule_eqf($a){
-        $b=$this->pullRule();
-        if($a!=$this->get($b)){
-
-            return $this->fail('Must be same value as field "{{arg1}}"', $b);
-        }
-    }
-
-    /**
-     * TODO: get field label for error message
-     */
-    function rule_nef($a){
-        $b=$this->pullRule();
-        if($a==$this->get($b)) return $this->fail('Must not be same as field "{{arg1}}"', $b);
     }
 
     /* \section Value Conversion Rules: General */
