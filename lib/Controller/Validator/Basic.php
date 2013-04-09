@@ -193,7 +193,7 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
      *
      * Arg: int- number of places
      */
-    function rule_decimal($a)
+    function rule_decimal_places($a)
     {
         $places=$this->pullRule();
         $pattern = sprintf('/^[0-9]+\.[0-9]{%s}$/', $places);
