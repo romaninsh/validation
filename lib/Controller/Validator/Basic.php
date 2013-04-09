@@ -180,18 +180,31 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
     function rule_number($a)
     {
         if( ! is_numeric($a)) return $this->fail('Must be a number: eg 12.34 or 1234');
-
     }
 
-    function rule_float($a)
+    function rule_decimal($a)
     {
-        if( ! is_float($a)) return $this->fail('Must be a decimal number: eg 12.34');
+        if( ! preg_match('/^[0-9]+\.[0-9]+$/', $a)) return $this->fail('Must be a decimal number: eg 12.34');
+    }
+
+    /**
+     * Checks for a specific number of
+     * decimal places
+     *
+     * Arg: int- number of places
+     */
+    function rule_decimal($a)
+    {
+        $places=$this->pullRule();
+        $pattern = sprintf('/^[0-9]+\.[0-9]{%s}$/', $places);
+        if( ! preg_match($pattern, $a)) return $this->fail('Must be a decimal number: eg 12.34');
 
     }
 
     function rule_int($a)
     {
-        if( ! is_int($a)) return $this->fail('Must be an integer: eg 1234');
+
+        if( ! preg_match('/^[0-9]*$/', $a)) return $this->fail('Must be an integer: eg 1234');
     }
 
     /* \section Value Test Rules: String */

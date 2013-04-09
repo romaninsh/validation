@@ -172,6 +172,8 @@ class Controller_Validator_Abstract extends \AbstractController {
     }
 
     /**
+     * TODO: find these comments very difficult to understand!
+     *
      * Call this to set a different hook when rules are going to be
      * applied. By default you have to call now()
      *
