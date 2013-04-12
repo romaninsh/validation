@@ -31,7 +31,6 @@ class Controller_Validator_Abstract extends \AbstractController {
         $this->source=$this->owner; // must support set/get interface
 
         if ($this->source instanceof \Model) {
-
             $this->source->addMethod('is', function($m) use ($that){
                 $args=func_get_args();
                 array_shift($args);

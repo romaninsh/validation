@@ -94,7 +94,7 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
         if(in_array($a, $vals)) return $this->fail('Not a valid value');;
     }
 
-    /* \section Value Test Rules: Lengths and Ranges */
+    /* \section Value Comparison Rules: absolute value */
 
     /**
      * Inclusive range check
@@ -120,56 +120,201 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
         }
     }
 
-    /* \section Value Test Rules: Value & Field Comparisons */
-
-    function rule_eq($a){
-        $b=$this->pullRule();
-        if($a!=$b) return $this->fail('Must be equal to {{arg1}}', $b);
-    }
-
-    function rule_ne($a){
-        $b=$this->pullRule();
-        if($a==$b) return $this->fail('Must not be equal to {{arg1}}', $b);
-    }
-
     /**
-     * TODO: get field caption for error message?
+     * Overloaded: checks value for numbers,
+     * string-length for other values.
      */
-    function rule_eqf($a){
-        $b=$this->pullRule();
-        if($a!=$this->get($b)){
+    function rule_gt($a)
+    {
+        $target=$this->pullRule();
 
-            return $this->fail('Must be same value as field "{{arg1}}"', $b);
+        if(is_numeric($a)){
+
+            if($a <= $target) return $this->fail('Must be greater than {{arg1}}', $target);
+
+        } else {
+
+            $len = $this->mb_str_len($a);
+            if($len <= $target) return $this->fail('Must be greater than {{arg1}} characters long', $target);
         }
     }
 
     /**
-     * TODO: get field caption for error message?
+     * Overloaded: checks value for numbers,
+     * string-length for other values.
      */
-    function rule_nef($a){
-        $b=$this->pullRule();
-        if($a==$this->get($b)) return $this->fail('Must not be same as field "{{arg1}}"', $b);
-    }
-
-    function rule_len_eq($a)
+    function rule_gte($a)
     {
         $target=$this->pullRule();
-        $actual = $this->mb_str_len($a);
-        if($target != $actual) return $this->fail('Must be {{arg1}} characters long', $target);
+
+        if(is_numeric($a)){
+
+            if($a < $target) return $this->fail('Must be greater than or equal to {{arg1}}', $target);
+
+        } else {
+
+            $len = $this->mb_str_len($a);
+            if($len < $target) return $this->fail('Must be greater than or equal to {{arg1}} characters long', $target);
+        }
     }
 
-    function rule_len_gt($a)
+    /**
+     * Overloaded: checks value for numbers,
+     * string-length for other values.
+     */
+    function rule_eq($a)
     {
         $target=$this->pullRule();
-        $actual = $this->mb_str_len($a);
-        if($actual <= $target) return $this->fail('Must be more than {{arg1}} characters long', $target);
+
+        if(is_numeric($a)){
+
+            if($a !== $target) return $this->fail('Must equal {{arg1}}', $target);
+
+        } else {
+
+            $len = $this->mb_str_len($a);
+            if($len !== $target) return $this->fail('Must equal {{arg1}} characters long', $target);
+        }
     }
 
-    function rule_len_lt($a)
+    /**
+     * Overloaded: checks value for numbers,
+     * string-length for other values.
+     */
+    function rule_lt($a)
     {
         $target=$this->pullRule();
-        $actual = $this->mb_str_len($a);
-        if($actual >= $target) return $this->fail('Must be less than {{arg1}} characters long');
+
+        if(is_numeric($a)){
+
+            if($a >= $target) return $this->fail('Must be less than {{arg1}}, $target');
+
+        } else {
+
+            $len = $this->mb_str_len($a);
+            if($len >= $target) return $this->fail('Must be less than {{arg1}} characters long', $target);
+        }
+    }
+
+    /**
+     * Overloaded: checks value for numbers,
+     * string-length for other values.
+     */
+    function rule_lte($a)
+    {
+        $target=$this->pullRule();
+
+        if(is_numeric($a)){
+
+            if($a > $target) return $this->fail('Must be less than or equal to {{arg1}}, $target');
+
+        } else {
+
+            $len = $this->mb_str_len($a);
+            if($len > $target) return $this->fail('Must be less than or equal to {{arg1}} characters long', $target);
+        }
+    }
+
+    /* \section Value Comparison Rules: field value */
+
+    /**
+     * Overloaded: checks value for numbers,
+     * string-length for other values.
+     */
+    function rule_gtf($a)
+    {
+        $field=$this->pullRule();
+        $target=$this->get($field);
+
+        if(is_numeric($a)){
+
+            if($a <= $target) return $this->fail('Must be greater than field {{arg1}}, $field');
+
+        } else {
+
+            $len = $this->mb_str_len($a);
+            if($len <= $target) return $this->fail('Must be longer than field {{arg1}}', $field);
+        }
+    }
+
+    /**
+     * Overloaded: checks value for numbers,
+     * string-length for other values.
+     */
+    function rule_gtef($a)
+    {
+        $field=$this->pullRule();
+        $target=$this->get($field);
+
+        if(is_numeric($a)){
+
+            if($a < $target) return $this->fail('Must be greater than or equal to field {{arg1}}', $field);
+
+        } else {
+
+            $len = $this->mb_str_len($a);
+            if($len < $target) return $this->fail('Must be longer than or equal to field {{arg1}}', $field);
+        }
+    }
+
+    /**
+     * Overloaded: checks value for numbers,
+     * string-length for other values.
+     */
+    function rule_eqf($a)
+    {
+        $field=$this->pullRule();
+        $target=$this->get($field);
+
+        if(is_numeric($a)){
+
+            if($a !== $target) return $this->fail('Must equal field {{arg1}}', $field);
+
+        } else {
+
+            $len = $this->mb_str_len($a);
+            if($len !== $target) return $this->fail('Must equal length of field {{arg1}}', $field);
+        }
+    }
+
+    /**
+     * Overloaded: checks value for numbers,
+     * string-length for other values.
+     */
+    function rule_ltf($a)
+    {
+        $field=$this->pullRule();
+        $target=$this->get($field);
+
+        if(is_numeric($a)){
+
+            if($a >= $target) return $this->fail('Must be less than field{{arg1}}', $field);
+
+        } else {
+
+            $len = $this->mb_str_len($a);
+            if($len >= $target) return $this->fail('Must be shorter than field {{arg1}}', $field);
+        }
+    }
+
+    /**
+     * Overloaded: checks value for numbers,
+     * string-length for other values.
+     */
+    function rule_ltef($a)
+    {
+        $field=$this->pullRule();
+        $target=$this->get($field);
+
+        if(is_numeric($a)){
+
+            if($a > $target) return $this->fail('Must be less than or equal to field {{arg1}}', $field);
+
+        } else {
+
+            $len = $this->mb_str_len($a);
+            if($len > $target) return $this->fail('Must be less than or equal to field {{arg1}}', $field);
+        }
     }
 
     /* \section Value Test Rules: Numeric */
@@ -197,13 +342,12 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
     {
         $places=$this->pullRule();
         $pattern = sprintf('/^[0-9]+\.[0-9]{%s}$/', $places);
-        if( ! preg_match($pattern, $a)) return $this->fail('Must be a decimal number: eg 12.34');
+        if( ! preg_match($pattern, $a)) return $this->fail('Must have {{arg1}} decimal places', $places);
 
     }
 
     function rule_int($a)
     {
-
         if( ! preg_match('/^[0-9]*$/', $a)) return $this->fail('Must be an integer: eg 1234');
     }
 
