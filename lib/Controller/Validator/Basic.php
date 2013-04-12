@@ -313,7 +313,7 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
         } else {
 
             $len = $this->mb_str_len($a);
-            if($len > $target) return $this->fail('Must be less than or equal to field {{arg1}}', $field);
+            if($len > $target) return $this->fail('Must shorter than or equal to field {{arg1}}', $field);
         }
     }
 
