@@ -33,7 +33,13 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
      * hook to run this rule, otherwise record updates will
      * be blocked.
      */
-    function rule_unique($a)
+
+    // TODO: FOR REMOVAL
+    //
+    // This is absolutely out of place and makes too many
+    // asumptions about the way how it's used. I agree it is
+    // a useful field, but it is still out of place.
+    function rule_unique($a,$field)
     {
         /*
 
@@ -43,7 +49,6 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
             throw $this->exception('Use with Model only');
          */
 
-        $field = $this->get_active_field();
         $table = $this->owner->table;
 
         $q = $this->api->db->dsql();
@@ -1141,7 +1146,8 @@ class Controller_Validator_Basic extends Controller_Validator_Abstract {
     protected function prep_in_vals($a)
     {
         $vals=explode(',', $this->pullRule());
-        array_walk($vals, create_function('&$val', '$val = trim($val);'));
+        array_walk($vals, function($val){ return trim($val);});
+       // create_function('&$val', '$val = trim($val);'));
         return $vals;
     }
 }

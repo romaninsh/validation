@@ -1,36 +1,93 @@
 <?php // vim:ts=4:sw=4:et:fdm=marker
 namespace romaninsh\validation;
 
+/**
+==ATK4===================================================
+   This file is part of Agile Toolkit 4
+    http://agiletoolkit.org/
+
+   (c) 2008-2013 Agile Toolkit Limited <info@agiletoolkit.org>
+   Distributed under Affero General Public License v3 and
+   commercial license.
+
+   See LICENSE or LICENSE_COM for more information
+ =====================================================ATK4=*/
+/**
+ * Abstract Validator implements the low-level requirements of
+ * a validator integrated into Agile Toolkit. In normal conditions
+ * you should use 'Validator' class which extends 'Validator_Advanced'.
+ *
+ * If you are writing your own validator rules to a very specific
+ * objects, you can use extend either this class or Validator_Basic.
+ *
+ * NOTE: How to write rules:
+ *  Do not attempt to put all the rules for a single field on a line.
+ * Many rules will change the value of acumulator, so please add 
+ * as many rules as necessary
+ *
+ * is(array(
+ *   'name|len|gt|20',
+ *   'name|!rude',
+ *   'name|to_ucfirst',
+ *   ));
+ *
+ * Finally - you can add one validator inside another to extends
+ * it's rules.
+ *
+ * @link http://agiletoolkit.org/doc/api
+ */
 class Controller_Validator_Abstract extends \AbstractController {
 
+    /**
+     * Each ruleset is broken down by field and is stored in this
+     * array in a normal form. You can get rules for a particular
+     * field by calling $this->getRules(field);
+     */
     public $rules=array();
 
     public $default_exception='Exception_ValidityCheck';
 
-    public $alias=array();  // legacy=>new
+    /**
+     * This is a static array which is expanded inside extending
+     * classes. Extend this inside your validator's init method:
+     *
+     *   $alias['mandatory']='required';
+     *   $alias['must_have']='required';
+     */
+    public $alias=array(); 
 
+    /**
+     * Validator can check either a model, array, form or any other
+     * object as long as it supports array_access. If you are using
+     * Model then you can use some additional functionality foreach
+     * selecting fields.
+     */
     public $source=null;
 
-    public $active_field; // The field being processed
+    /**
+     * Name of the field which is currently beind processed
+     */
+    public $active_field;
 
-    // TODO: Multibyte stuff: refactor to a better place??
-    public $encoding='UTF-8';
-    public $is_mb = false; // Is the PHP5 multibyte lib available?
-
-
+    // {{{ Initialization method
     function init()
     {
         parent::init();
         $that=$this;
 
-        if(function_exists('mb_get_info')){
-
-            $this->is_mb = true;
+        if ($this->owner instanceof Controller_Validator) {
+            $this->owner->addHook('extraRules',$this);
+            return;  // no source, simply extend rules.
         }
 
-        $this->source=$this->owner; // must support set/get interface
+        if ((
+            $this->owner instanceof \Model ||
+            $this->owner instanceof \Form
 
-        if ($this->source instanceof \Model) {
+        ) && !$this->owner->hasMethod('is')) {
+
+            $this->source=$this->owner; // must support set/get interface
+            $this->owner->validator = $this;
 
             $this->source->addMethod('is', function($m) use ($that){
                 $args=func_get_args();
@@ -42,8 +99,10 @@ class Controller_Validator_Abstract extends \AbstractController {
             });
         }
     }
+    // }}}
 
-    //  Rule initialization and normalization methods
+    // {{{ Rule initialization and normalization methods
+    // ^^ do not remove - that's a fold in VIM, starts section
 
     /**
      * This method will go through all the rules you specify, expand
@@ -81,7 +140,7 @@ class Controller_Validator_Abstract extends \AbstractController {
         }
 
         // Convert field defintion into list of fields
-        $fields=$this->expandFieldDefinition($field_definition,$rules);
+        $fields=$this->expandFieldDefinition($field_definition, $rules);
 
         // Save rules for each field
         foreach ($fields as $field) {
@@ -117,35 +176,21 @@ class Controller_Validator_Abstract extends \AbstractController {
         //
         // 'foo?\'my piped | string\''
         // "foo?'my piped | string'"
+        //
+        // BIG NOTE: There is a reason why there are 2 formats. I don't
+        // want developres to use ONLY the pipe format. There is always
+        // multi-argument format, where argument can be anything, and
+        // we don't complicate things and try to get around regexps
+        //
+        // is('name|required?my pipe|string')       // Bad
+        // is('name','required?my pipe|string')     // Good
+        // is('name','required?','my pipe|string')  // Best
 
-        $p = "/(?:[^\|\']|\'((?<=\\\\)\'|[^\'])*\')*/x";
-        preg_match_all($p, $rules, $matches);
+        // TODO: clean up
+        $rules=preg_split('/[|,:]/',$rules);
+        $field=array_shift($rules);
 
-        $chain = array();
-        $n = 1;
-
-        foreach($matches[0] as $rule)
-        {
-            if( ! empty($rule))
-            {
-                // Trim whitespace and quotes from ends of rule
-
-                $rule = trim($rule, " '");
-
-                if($n == 1)
-                {
-                    $field = $rule;
-                }
-                else
-                {
-                    $chain[] = $rule;
-                }
-
-                $n ++;
-            }
-        }
-
-        return array($field, $chain);
+        return array($field, $rules);
     }
 
     /**
@@ -161,9 +206,9 @@ class Controller_Validator_Abstract extends \AbstractController {
         return explode(',',$field_definition);
     }
 
-    //
+    // }}}
 
-    //  Supplimentary configuration methods
+    // {{{ Supplimentary configuration methods
     /**
      * Call this to get list of parsed rules for specified field.
      */
@@ -201,14 +246,9 @@ class Controller_Validator_Abstract extends \AbstractController {
         return $this->applyRulesets();
     }
 
-    //
+    // }}}
 
-    //  Internal Methods to be used by rule_*
-
-
-    //
-
-    //  Methods which are essential when applying rules
+    // {{{ Methods which are essential when applying rules
     /**
      * Get list of fields which we are going to validate. In some cases
      * it makes no sense to validate fields which are not appearing individually
@@ -272,11 +312,15 @@ class Controller_Validator_Abstract extends \AbstractController {
     /**
      * Retuns field name of rule chain
      * being processed
+     *
+     * Second argument to rule_ is field, there are no need for this method
      */
+    /*
     function get_active_field()
     {
         return $this->active_field;
     }
+     */
 
     /**
      * Changes the original value of the field (for normalization)
@@ -312,94 +356,9 @@ class Controller_Validator_Abstract extends \AbstractController {
 
         return $rule;
     }
+    // }}}
 
-    public $acc=null;
-    public $consumed=array();
-    public $current_ruleset=null;
-    public $custom_error=null;
-    public $bail_out=false;
-
-    /**
-     * This is the main body for rule processing.
-     */
-    function applyRules($field,$ruleset)
-    {
-        // Save previous values, just in case
-        $acc=$this->acc;
-        $crs=$this->current_ruleset;
-        $this->bail_out=false;
-        $is_required = false;
-
-        $this->acc=$this->get($field);
-        $this->current_ruleset=$ruleset;
-
-        while(!is_null($rule=$this->pullRule())){
-
-            if($rule == 'required')
-                $is_required = true;
-
-            $this->cast=false;
-            $this->custom_error=null;
-
-            // For debugging
-            $tmp=null;
-            $this->consumed=array($rule);
-
-            if($is_required || $this->acc !== '')
-            {
-                try{
-                    if( (is_object($rule) || is_array($rule)) && is_callable($rule)){
-
-                        $tmp = $rule($this,$this->acc,$field);
-
-                    }else{
-                        // For to_XX rules
-                        if(substr($rule,0,3)=='to_'){
-
-                            if(!$this->hasMethod('rule_'.$rule)) {
-                                $rule=substr($rule,3);
-                            }
-
-                            $this->cast=true;
-                        }
-
-                        if($rule===''){
-                            if($this->cast)$this->set($field,$this->acc);
-                            continue;
-                        }
-
-                        $rule=$this->resolveRuleAlias($rule);
-
-                        $tmp = $this->{'rule_'.$rule}($this->acc,$field);
-                    }
-
-                    if($this->debug){
-                        echo "<font color=blue>rule_$rule({$this->acc},".
-                            join(',',$this->consumed).")=$tmp</font><br/>";
-                    }
-
-                    if(!is_null($tmp))$this->acc=$tmp;
-                    if($this->cast)$this->set($field, $tmp);
-                    if($this->bail_out) break;
-
-                } catch (\Exception_ValidityCheck $e) {
-                    if($this->debug){
-                        echo "<font color=red>rule_$rule({$this->acc},".
-                            join(',',$this->consumed).") failed</font><br/>";
-                    }
-                    $this->acc=$acc;
-                    $this->current_ruleset=$crs;
-                    throw $e
-                        ->setField($field)
-                        ->addMoreInfo('val',$this->acc)
-                        ->addMoreInfo('rule',$rule);
-                }
-            }
-        }
-        $this->acc=$acc;
-        $this->current_ruleset=$crs;
-    }
-
+    // {{{ Methods which are called by the rules
     function fail()
     {
         $args =  func_get_args();
@@ -426,57 +385,98 @@ class Controller_Validator_Abstract extends \AbstractController {
     {
         $this->bail_out=true;
     }
+    // }}}
 
-    //
+    // {{{ Main rule application loop
+
+    // Next are system fields, do not access when in doubt.
+    public $acc=null;
+    public $consumed=array();
+    public $current_ruleset=null;
+    public $custom_error=null;
+    public $bail_out=false;
 
     /**
-     * Will process individual rule
+     * This is the main body for rule processing.
+     */
+    function applyRules($field,$ruleset)
+    {
+        // Save previous values, just in case
+        $acc=$this->acc;
+        $crs=$this->current_ruleset;
+        $this->bail_out=false;
+
+        $this->acc=$this->get($field);
+        $this->current_ruleset=$ruleset;
+
+        while(!is_null($rule=$this->pullRule())){
+
+            $this->cast=false;
+            $this->custom_error=null;
+
+            // For debugging
+            $tmp=null;
+            $this->consumed=array($rule);
+
+            try{
+                if( (is_object($rule) || is_array($rule)) && is_callable($rule)){
+
+                    $tmp = $rule($this,$this->acc,$field);
+
+                }else{
+                    // For to_XX rules
+                    if(substr($rule,0,3)=='to_'){
+
+                        if(!$this->hasMethod('rule_'.$rule)) {
+                            $rule=substr($rule,3);
+                        }
+
+                        $this->cast=true;
+                    }
+
+                    if($rule===''){
+                        if($this->cast)$this->set($field,$this->acc);
+                        continue;
+                    }
+
+                    $rule=$this->resolveRuleAlias($rule);
+
+                    $tmp = $this->{'rule_'.$rule}($this->acc,$field);
+                }
+
+            if($this->debug){
+                echo "<font color=blue>rule_$rule({$this->acc},".
+                    join(',',$this->consumed).")=$tmp</font><br/>";
+            }
+
+                if(!is_null($tmp))$this->acc=$tmp;
+                if($this->cast)$this->set($field, $tmp);
+                if($this->bail_out) break;
+
+            } catch (\Exception_ValidityCheck $e) {
+                if($this->debug){
+                    echo "<font color=red>rule_$rule({$this->acc},".
+                        join(',',$this->consumed).") failed</font><br/>";
+                }
+                $this->acc=$acc;
+                $this->current_ruleset=$crs;
+                throw $e
+                    ->setField($field)
+                    ->addMoreInfo('val',$this->acc)
+                    ->addMoreInfo('rule',$rule);
+            }
+        }
+        $this->acc=$acc;
+        $this->current_ruleset=$crs;
+    }
+    // }}}
+
+    /**
+     * The only rule in Validator_Abstract. Will fail.
      */
     function rule_fail()
     {
         return $this->fail('Is incorrect');
     }
 
-    ////////////////////////
-    // MB STRING UTILITIES
-    // TODO: refactor to a more sensible place?
-    // TODO Any case for an app config setting
-    // for encoding, perhaps with a default of UTF-8?
-    ////////////////////////
-
-    function mb_str_len($a)
-    {
-         return ($this->is_mb) ? mb_strlen($a, $this->encoding) : strlen($a);
-    }
-
-    function mb_str_to_lower($a)
-    {
-        return ($this->is_mb) ? mb_strtolower($a, $this->encoding) : strtolower($a);
-    }
-
-    function mb_str_to_upper($a)
-    {
-        return ($this->is_mb) ? mb_strtoupper($a, $this->encoding) : strtoupper($a);
-    }
-
-    function mb_str_to_upper_words($a)
-    {
-        if ($this->is_mb)
-        {
-            return mb_convert_case($value, MB_CASE_TITLE, $this->encoding);
-        }
-
-        return ucwords(strtolower($value));
-
-    }
-
-    function mb_truncate($a, $len, $append = '...')
-    {
-        if ($this->is_mb)
-        {
-            return mb_substr($value, 0, $len, $this->encoding) . $append;
-        }
-
-        substr($value, 0, $limit).$end;
-    }
 }
